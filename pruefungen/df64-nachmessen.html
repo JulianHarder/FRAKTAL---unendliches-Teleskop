@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FRAKTAL – df64 nachmessen</title>
+<link rel="stylesheet" href="../css/variablen.css">
+<style>
+  body { margin: 0; padding: 28px; background: var(--farbe-grund); color: var(--farbe-text);
+         font: 14px/1.6 var(--schrift); }
+  h1 { font-size: 19px; letter-spacing: 1.5px; margin: 0 0 4px; }
+  p.unter { margin: 0 0 24px; color: var(--farbe-text-leise); max-width: 70ch; }
+  table { border-collapse: collapse; margin: 18px 0; }
+  th, td { padding: 6px 14px 6px 0; text-align: left; vertical-align: top; }
+  th { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase;
+       color: var(--farbe-text-still); border-bottom: 1px solid var(--farbe-rand); }
+  td.zahl { font-family: var(--schrift-fest); }
+  .gut { color: var(--farbe-gut); }
+  .schlecht { color: var(--farbe-warnung); }
+  .urteil { margin-top: 24px; padding: 14px 16px; border-radius: var(--radius);
+            background: var(--farbe-flaeche); border: 1px solid var(--farbe-rand);
+            max-width: 70ch; }
+  .urteil b { display: block; margin-bottom: 6px; font-size: 16px; }
+  code { font-family: var(--schrift-fest); color: var(--farbe-akzent); }
+  canvas { display: none; }
+</style>
+</head>
+<body>
+
+<h1>Rechnet die Doppelgenauigkeit wirklich?</h1>
+<p class="unter">
+  Die emulierte Doppelgenauigkeit lebt davon, dass Rundungsfehler aufgefangen
+  werden. Dafür stehen im Shader Ausdrücke, die mathematisch null ergeben.
+  Ein Compiler, der Gleitkomma wie Schulmathematik behandelt, kürzt sie weg –
+  dann rechnet FRAKTAL heimlich doch nur mit 32 Bit. Diese Seite misst nach,
+  auf genau der Grafikkarte, die gerade vor dir steht.
+</p>
+
+<canvas id="leinwand" width="6" height="1"></canvas>
+<div id="ausgabe">läuft …</div>
+
+<script src="../js/kern/Zustand.js"></script>
+<script src="../js/kern/Zahl.js"></script>
+<script src="../js/shader/vertex.js"></script>
+<script src="../js/shader/bausteine.js"></script>
+<script src="../js/gl/Kontext.js"></script>
+<script src="../js/gl/Programm.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var leinwand = document.getElementById('leinwand');
+  var ausgabe = document.getElementById('ausgabe');
+  var gl = leinwand.getContext('webgl2', { preserveDrawingBuffer: true });
+
+  if (!gl) {
+    ausgabe.innerHTML = '<p class="schlecht">Kein WebGL2 – hier lässt sich nichts messen.</p>';
+    return;
+  }
+
+  /* Sechs Rechnungen nebeneinander, je ein Pixel breit. Jede schreibt ihr
+   * Ergebnis als 24-Bit-Festkomma in die Farbkanäle; zurückgelesen wird es
+   * mit readPixels. Umständlich, aber der einzige Weg, eine Zahl aus einem
+   * Fragment-Shader herauszubekommen, ohne Gleitkomma-Texturen zu verlangen. */
+  var QUELLE = '#version 300 es\nprecision highp float;\n'
+    + FRAKTAL.Shader.bausteine + `
+uniform vec2 u_mitte;      // -0,743643887037151 als (hoch, tief)
+uniform vec2 u_grob;       // 1e-12
+uniform vec2 u_fein;       // 1e-15
+uniform vec2 u_winzig;     // 1e-17
+out vec4 ausgabe;
+
+vec3 kodieren(float v) {
+  v = clamp(v, 0.0, 0.99999988);
+  float a = floor(v * 256.0);
+  float r1 = v * 256.0 - a;
+  float b = floor(r1 * 256.0);
+  float r2 = r1 * 256.0 - b;
+  return vec3(a, b, floor(r2 * 256.0)) / 255.0;
+}
+
+void main() {
+  int welche = int(gl_FragCoord.x);
+  float wert = 0.0;
+
+  if (welche == 0) {
+    vec2 r = dfMul(vec2(1.0, 1e-7), vec2(1.0, 1e-7));
+    wert = ((r.x - 1.0) + r.y) * 2.5e6;
+  } else if (welche == 1) {
+    float a = 1.0 + 1e-7;
+    wert = (a * a - 1.0) * 2.5e6;
+  } else if (welche == 2) {
+    vec2 c = dfAdd(u_mitte, dfMul(dfVon(500.0), u_grob));
+    wert = dfSub(c, u_mitte).x * 1e9;
+  } else if (welche == 3) {
+    float m = u_mitte.x;
+    wert = ((m + 500.0 * u_grob.x) - m) * 1e9;
+  } else if (welche == 4) {
+    vec2 c = dfAdd(u_mitte, dfMul(dfVon(500.0), u_fein));
+    wert = dfSub(c, u_mitte).x * 1e12;
+  } else {
+    vec2 c = dfAdd(u_mitte, dfMul(dfVon(500.0), u_winzig));
+    wert = dfSub(c, u_mitte).x * 1e14;
+  }
+  ausgabe = vec4(kodieren(wert), 1.0);
+}`;
+
+  var programm;
+  try {
+    programm = FRAKTAL.Programm.bauen(gl, FRAKTAL.Shader.vertex, QUELLE);
+  } catch (fehler) {
+    ausgabe.innerHTML = '<p class="schlecht">Der Shader ließ sich nicht übersetzen:</p><pre>'
+      + fehler.message + '</pre>';
+    return;
+  }
+
+  programm.benutzen();
+  gl.bindVertexArray(gl.createVertexArray());
+
+  var t = FRAKTAL.Zahl.teilen;
+  var mitte = t(-0.743643887037151);
+  gl.uniform1f(programm.ort('u_split'), 4097.0);
+  gl.uniform2f(programm.ort('u_mitte'), mitte[0], mitte[1]);
+  gl.uniform2f(programm.ort('u_grob'), t(1e-12)[0], t(1e-12)[1]);
+  gl.uniform2f(programm.ort('u_fein'), t(1e-15)[0], t(1e-15)[1]);
+  gl.uniform2f(programm.ort('u_winzig'), t(1e-17)[0], t(1e-17)[1]);
+
+  gl.viewport(0, 0, 6, 1);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  var roh = new Uint8Array(24);
+  gl.readPixels(0, 0, 6, 1, gl.RGBA, gl.UNSIGNED_BYTE, roh);
+  function lesen(i) {
+    return (roh[i * 4] * 65536 + roh[i * 4 + 1] * 256 + roh[i * 4 + 2]) / 16777216;
+  }
+
+  var ZEILEN = [
+    { was: '(1 + 1e-7)² – doppelt', i: 0, teiler: 2.5e6, soll: 2.0e-7, toleranz: 2e-10 },
+    { was: '(1 + 1e-7)² – einfach', i: 1, teiler: 2.5e6, soll: 2.3842e-7, toleranz: 2e-9,
+      bemerkung: '19 % daneben – so weit reicht 32 Bit' },
+    { was: 'Versatz 5e-10 – doppelt', i: 2, teiler: 1e9, soll: 5.0e-10, toleranz: 5e-13 },
+    { was: 'Versatz 5e-10 – einfach', i: 3, teiler: 1e9, soll: 0, toleranz: 1e-12,
+      bemerkung: 'spurlos verschwunden' },
+    { was: 'Versatz 5e-13 – doppelt', i: 4, teiler: 1e12, soll: 5.0e-13, toleranz: 5e-15 },
+    { was: 'Versatz 5e-15 – doppelt', i: 5, teiler: 1e14, soll: 5.0e-15, toleranz: 1e-16,
+      bemerkung: 'jenseits der Grenze – hier darf es brechen', egal: true }
+  ];
+
+  var schiefe = 0;
+  var reihen = ZEILEN.map(function (zeile) {
+    var wert = lesen(zeile.i) / zeile.teiler;
+    var passt = Math.abs(wert - zeile.soll) <= zeile.toleranz;
+    if (!passt && !zeile.egal) schiefe++;
+
+    return '<tr>'
+      + '<td>' + zeile.was + '</td>'
+      + '<td class="zahl">' + wert.toExponential(4) + '</td>'
+      + '<td class="zahl">' + zeile.soll.toExponential(4) + '</td>'
+      + '<td class="' + (zeile.egal ? '' : (passt ? 'gut' : 'schlecht')) + '">'
+      + (zeile.egal ? '–' : (passt ? 'stimmt' : 'falsch')) + '</td>'
+      + '<td>' + (zeile.bemerkung || '') + '</td>'
+      + '</tr>';
+  });
+
+  var urteil = schiefe === 0
+    ? '<b class="gut">Die Doppelgenauigkeit greift.</b>'
+      + 'Diese Grafikkarte löst einen Versatz von 5·10⁻¹³ auf, die einfache '
+      + 'Rechnung verliert schon 5·10⁻¹⁰ vollständig. Die Fehlerterme wurden '
+      + 'nicht wegoptimiert.'
+    : '<b class="schlecht">Hier stimmt etwas nicht.</b>'
+      + schiefe + ' Messung(en) weichen ab. Wahrscheinlich hat der Shader-Compiler '
+      + 'die Fehlerterme wegoptimiert. Dann hilft nur, die Aufspaltung weiter zu '
+      + 'verschleiern – siehe die Erklärung in <code>js/shader/bausteine.js</code>.';
+
+  ausgabe.innerHTML =
+    '<table><tr><th>Rechnung</th><th>gemessen</th><th>erwartet</th><th></th><th></th></tr>'
+    + reihen.join('') + '</table>'
+    + '<div class="urteil">' + urteil + '</div>'
+    + '<p class="unter" style="margin-top:18px">Gerechnet auf: <code>'
+    + FRAKTAL.Kontext.faehigkeiten(gl).renderer + '</code></p>';
+})();
+</script>
+</body>
+</html>

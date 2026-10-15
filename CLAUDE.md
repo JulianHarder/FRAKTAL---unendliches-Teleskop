@@ -10,6 +10,36 @@ Shader mit emulierter Doppelgenauigkeit (zwei floats je Zahl) weiter, damit das
 Bild auch bei Zoom 1e10 noch scharf ist. Wo die echte Grenze liegt, zeigt die
 Oberfläche ehrlich an – sie wird nicht versteckt.
 
+## Stand (Oktober 2026)
+
+**Fertig und geprüft: Etappen 1 bis 4.** Als Nächstes steht Etappe 5 an.
+
+1. **Gerüst** – WebGL2-Kontext, Vollbild-Dreieck ohne Puffer, Menge in Graustufen.
+2. **Navigation** – Zoom zum Mauszeiger (im Zweierlogarithmus), Ziehen, Kneifen,
+   Tastatur. Iterationstiefe wächst mit dem Zoom. Grobbild in Bewegung,
+   Feinbild im Stillstand, Notbremse gegen zu lange Bilder.
+3. **Farbe** – Smooth Coloring, fünf Paletten als Daten in einer 1024-Pixel-
+   Textur, Regler für Dichte/Farbdrehung/Tiefe, 2×2-Kantenglättung im Standbild.
+4. **Tiefe** – emulierte Doppelgenauigkeit im Shader, automatische Umschaltung,
+   Genauigkeitsanzeige. Reicht bis Zoom ~1e11 statt ~1e4.
+
+Offen: **5** Julia-Vorschau · **6** Orte, Lesezeichen, Link, Dauerzoom ·
+**7** PNG-Export, Hilfe, README, Feinschliff · **8** Kopie ins Portfolio.
+Die vollständige Beschreibung aller acht Etappen steht in `FRAKTAL-Plan.md`.
+
+### Wo von diesem Plan abgewichen wurde
+
+- **Die Umschaltschwelle ist kein fester Zoomwert.** Der Plan nannte Zoom 8192.
+  Dort trägt die einfache Rechnung aber nur noch 0,58 Dezimalstellen – viel zu
+  spät. Entschieden wird jetzt nach den *verbleibenden Stellen* (umschalten
+  unter 1,4, zurück über 2,0), was sich auch der Fenstergröße anpasst: große
+  Fenster haben kleinere Pixel und stoßen früher an. Die Schwelle liegt damit
+  bei Zoom ~1260.
+- **Beim Einfärben wird 1,0 abgezogen** (`js/shader/fraktal.js`). Wegen des
+  Fluchtradius 256 beginnt die weiche Iterationszahl nicht bei 0, sondern bei
+  etwa 1 – ohne den Abzug startet das weite Außenfeld mitten in der Palette
+  und leuchtet heller als der Rand, den es umgibt.
+
 ## Stack
 - Vanilla JavaScript, **WebGL2**, kein Framework, kein TypeScript, kein Build-Tool
 - **Kein ES-Module-Syntax (`import`/`export`) in `js/`.** `index.html` lädt
@@ -43,9 +73,56 @@ Oberfläche ehrlich an – sie wird nicht versteckt.
 - `#version 300 es` muss die **erste** Zeile des Shaders sein – kein Leerzeichen
   und kein Zeilenumbruch davor, sonst schlägt das Kompilieren fehl.
 
+Diese drei haben im Projekt schon zugeschlagen:
+
+- **Das `hidden`-Attribut verliert gegen eine eigene `display`-Regel.** Der
+  WebGL-Warnhinweis lag dadurch unsichtbar über dem fertigen Fraktal. Deshalb
+  steht in `css/grundlage.css` ein `[hidden] { display: none !important; }`.
+  Gilt für jedes weitere Fenster, das noch dazukommt.
+- **Im Zeichner darf nur eine Uhr benutzt werden.** `eingabe()` nimmt bewusst
+  keine Zeit; gestempelt wird im nächsten Bildtakt mit dessen Zeitstempel.
+  Mischt man `performance.now()` und die Bildtakt-Zeit, kann die letzte
+  Eingabe für immer als „gerade eben" gelten – das Bild bleibt dann dauerhaft
+  grob, ohne dass irgendwo ein Fehler erscheint.
+- **df64 normalisiert.** Der „tiefe" Teil einer Doppelzahl ist nach jeder
+  Rechnung ein kleiner, oft negativer Rest – nicht die Stellen, die man
+  hineingesteckt hat. Prüfen lässt sich nur die Summe beider Teile. Zwei
+  Messungen sind daran zuerst gescheitert.
+
 ## Befehle
 - Kein Build, kein Dev-Server: `index.html` per Doppelklick im Browser öffnen.
 - Nur zum Testen über HTTP: `python3 -m http.server 8781`
+
+## Prüfen
+
+In `pruefungen/` liegen fünf Node-Skripte, die ohne Browser laufen und
+zusammen rund 80 Einzelprüfungen machen – Kameramathematik, Maus- und
+Tastatur-Verdrahtung gegen ein Stub-DOM, Grob/Fein-Logik mit gestellter Uhr,
+Palettentextur und die Wahl des Rechenwegs:
+
+```
+for f in pruefungen/*.js; do node "$f"; done
+```
+
+Nach jeder Änderung laufen lassen. Sie brauchen nichts außer Node.
+
+`pruefungen/df64-nachmessen.html` misst im Browser nach, ob die
+Doppelgenauigkeit auf *dieser* Grafikkarte wirklich greift – einfach
+doppelklicken. Wichtig, weil der Shader-Compiler je nach Treiber anders
+optimiert.
+
+**Zum Bilderprüfen:** Der Browser-Pane in Claude Desktop kann kein WebGL, dort
+bleibt die Leinwand leer. Stattdessen kopfloses Chrome mit Software-Rendering:
+
+```
+google-chrome --headless=new --use-angle=swiftshader --enable-unsafe-swiftshader \
+  --window-size=1200,800 --screenshot=bild.png "file://$PWD/index.html"
+```
+
+Dabei laufen nur rund acht Bildtakte, bevor der Screenshot fällt – für
+Interaktion taugt das nicht, dafür sind die Node-Skripte da. Ein Protokoll,
+das erst nach vielen Takten schreibt, kommt nie zum Zug; bei jedem Takt
+mitschreiben.
 
 ## Arbeitsweise
 - Git: eigenes Repo. Commits auf Zuruf, Push nur wenn Julian „push" sagt.
