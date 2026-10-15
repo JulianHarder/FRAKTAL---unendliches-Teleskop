@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FRAKTAL – unendliches Teleskop</title>
+<meta name="description" content="Ein Teleskop in die Mandelbrot-Menge: immer weiter hineinzoomen, ohne an ein Ende zu kommen – auf der Grafikkarte gerechnet, ohne Server.">
+
+<!-- Alles liegt lokal. Diese Seite laedt nichts aus dem Netz:
+     keine Bibliothek, kein CDN, keine Webfonts, keine Analyse. -->
+<link rel="stylesheet" href="css/variablen.css">
+<link rel="stylesheet" href="css/grundlage.css">
+<link rel="stylesheet" href="css/leinwand.css">
+<link rel="stylesheet" href="css/oberflaeche.css">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="marke">FRAKTAL<span>unendliches Teleskop</span></div>
+
+  <div class="kopf-werkzeuge">
+    <button type="button" id="knopf-uebersicht" title="Zurück zur Übersicht (0)">Übersicht</button>
+  </div>
+</header>
+
+<main>
+  <section class="leinwand-bereich">
+    <canvas id="leinwand"></canvas>
+
+    <div class="kein-webgl" id="kein-webgl" hidden>
+      <h2>Kein WebGL2</h2>
+      <p id="kein-webgl-text">
+        Dieser Browser kann kein WebGL2. FRAKTAL rechnet das Bild auf der
+        Grafikkarte – ohne WebGL2 geht das nicht. Ein aktueller Firefox,
+        Chrome oder Edge kann es.
+      </p>
+    </div>
+  </section>
+
+  <aside class="seitenleiste">
+    <div class="block">
+      <h2>Diese Stelle</h2>
+      <div class="kennzahl"><span>Zoom</span><b class="akzent" id="wert-zoom">–</b></div>
+      <div class="kennzahl"><span>Realteil</span><b id="wert-re">–</b></div>
+      <div class="kennzahl"><span>Imaginärteil</span><b id="wert-im">–</b></div>
+    </div>
+
+    <div class="block">
+      <h2>Rechnung</h2>
+      <div class="kennzahl"><span>Iterationen</span><b id="wert-iterationen">–</b></div>
+      <div class="kennzahl"><span>Letztes Bild</span><b id="wert-dauer">–</b></div>
+      <div class="kennzahl"><span>Bilder</span><b id="wert-bildrate">–</b></div>
+      <div class="kennzahl"><span>Gerechnet auf</span><b id="wert-karte">–</b></div>
+      <p class="hinweis warnung" id="hinweis-drosselung" hidden></p>
+    </div>
+
+    <div class="block">
+      <h2>Genauigkeit</h2>
+      <div class="kennzahl"><span>Rechenweg</span><b id="wert-modus">–</b></div>
+      <div class="balken" id="balken-rahmen"><span id="balken-stellen"></span></div>
+      <p class="hinweis" id="text-stellen">–</p>
+      <div class="modus-liste" id="modus-liste"></div>
+    </div>
+
+    <div class="block">
+      <h2>Farbe</h2>
+      <div class="palette-liste" id="paletten-liste"></div>
+      <div class="regler-liste" id="regler-liste"></div>
+    </div>
+
+    <div class="block">
+      <h2>Mandelbrot-Menge</h2>
+      <p class="hinweis">
+        Jedes Pixel ist eine Zahl <i>c</i>. Gefragt wird, ob die Folge
+        <i>z</i> → <i>z</i>² + <i>c</i> beschränkt bleibt. Bleibt sie es,
+        gehört <i>c</i> zur Menge – das ist das Schwarze. Draußen zeigt die
+        Helligkeit, wie schnell die Folge entkommen ist.
+      </p>
+      <p class="hinweis">
+        Beim Zoomen wird kurz grob gerechnet, im Stillstand dann scharf.
+        Die Iterationstiefe wächst mit – sonst würde tief drinnen alles
+        schwarz.
+      </p>
+    </div>
+  </aside>
+</main>
+
+<footer class="fuss">
+  <span><kbd>Mausrad</kbd> – zoomen, wo der Zeiger steht</span>
+  <span><kbd>Ziehen</kbd> – verschieben</span>
+  <span><kbd>Doppelklick</kbd> – näher heran</span>
+  <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> oder Pfeile – schieben</span>
+  <span><kbd>+</kbd><kbd>−</kbd> – zoomen</span>
+  <span><kbd>0</kbd> – Übersicht</span>
+  <span><kbd>1</kbd>…<kbd>5</kbd> – Palette</span>
+  <span><kbd>G</kbd> – Rechenweg</span>
+</footer>
+
+<!-- Skripte: klassische Tags in fester Reihenfolge, kein type="module".
+     Grund: die Seite muss per Doppelklick ueber file:// laufen, und Browser
+     blockieren ES-Module-Importe ueber file:// (CORS). Jede Datei haengt
+     sich an das globale Objekt window.FRAKTAL. -->
+
+<!-- Daten (zuerst, alle anderen lesen daraus) -->
+<script src="js/daten/paletten.js"></script>
+
+<!-- Kern -->
+<script src="js/kern/Zustand.js"></script>
+<script src="js/kern/Zahl.js"></script>
+
+<!-- Shader-Quellen (JS-Strings, keine .glsl-Dateien: fetch ist
+     ueber file:// ebenfalls blockiert) -->
+<script src="js/shader/vertex.js"></script>
+<script src="js/shader/bausteine.js"></script>
+<script src="js/shader/fraktal.js"></script>
+
+<!-- Grafikkarte -->
+<script src="js/gl/Kontext.js"></script>
+<script src="js/gl/Programm.js"></script>
+<script src="js/gl/Leinwand.js"></script>
+<script src="js/gl/PalettenTextur.js"></script>
+
+<!-- Ansicht -->
+<script src="js/ansicht/Kamera.js"></script>
+<script src="js/ansicht/Iterationen.js"></script>
+<script src="js/ansicht/Genauigkeit.js"></script>
+<script src="js/ansicht/Zeichner.js"></script>
+
+<!-- Oberflaeche -->
+<script src="js/ui/Seitenleiste.js"></script>
+<script src="js/ui/Farbwahl.js"></script>
+<script src="js/ui/Rechenmodus.js"></script>
+<script src="js/ui/Maus.js"></script>
+<script src="js/ui/Tastatur.js"></script>
+
+<!-- Einstieg -->
+<script src="js/main.js"></script>
+</body>
+</html>

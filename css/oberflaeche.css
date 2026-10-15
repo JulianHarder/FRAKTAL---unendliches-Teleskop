@@ -1,0 +1,168 @@
+/* Seitenleiste mit den Kennzahlen zur aktuellen Stelle. */
+.seitenleiste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-4);
+  padding: var(--abstand-4);
+  background: var(--farbe-flaeche);
+  border-left: 1px solid var(--farbe-rand);
+  overflow-y: auto;
+}
+
+.block {
+  background: var(--farbe-flaeche-hoch);
+  border: 1px solid var(--farbe-rand);
+  border-radius: var(--radius);
+  padding: var(--abstand-3);
+}
+
+.block h2 {
+  margin: 0 0 var(--abstand-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--farbe-text-still);
+}
+
+.kennzahl {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--abstand-2);
+  padding: 3px 0;
+  font-size: var(--text-klein);
+}
+
+.kennzahl span { color: var(--farbe-text-leise); }
+
+.kennzahl b {
+  font: var(--text-klein) / 1.4 var(--schrift-fest);
+  font-weight: 600;
+  color: var(--farbe-text);
+  text-align: right;
+  word-break: break-all;
+}
+
+.kennzahl b.akzent { color: var(--farbe-akzent); }
+
+.hinweis {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--farbe-text-still);
+}
+
+/* Warnung in der Seitenleiste, z. B. wenn die Tiefe gedrosselt wurde. */
+.hinweis.warnung {
+  margin-top: var(--abstand-3);
+  padding-top: var(--abstand-2);
+  border-top: 1px solid var(--farbe-rand);
+  color: var(--farbe-warnung);
+}
+
+.hinweis + .hinweis { margin-top: var(--abstand-3); }
+
+/* --- Palettenwahl --- */
+.palette-liste {
+  display: grid;
+  gap: var(--abstand-1);
+}
+
+button.palette {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand-2);
+  width: 100%;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+/* Der Vorschaustreifen - derselbe Verlauf wie die Textur im Shader. */
+button.palette i {
+  display: block;
+  flex: 0 0 52px;
+  height: 11px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+}
+
+button.palette[aria-pressed="true"] {
+  border-color: var(--farbe-akzent);
+  color: var(--farbe-akzent);
+}
+
+/* --- Regler --- */
+.regler-liste { margin-top: var(--abstand-4); }
+
+.regler-zeile + .regler-zeile { margin-top: var(--abstand-3); }
+
+.regler-zeile label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--abstand-2);
+  margin-bottom: 2px;
+  font-size: 11px;
+  color: var(--farbe-text-leise);
+}
+
+.regler-zeile label b {
+  font: 11px var(--schrift-fest);
+  color: var(--farbe-text);
+}
+
+input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--farbe-akzent);
+  cursor: pointer;
+}
+
+/* --- Genauigkeitsbalken --- */
+.balken {
+  height: 7px;
+  margin: var(--abstand-2) 0 var(--abstand-2);
+  background: var(--farbe-grund);
+  border: 1px solid var(--farbe-rand);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.balken span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--farbe-akzent);
+  transition: width var(--zeit-kurz) linear;
+}
+
+/* Weniger als eine Stelle übrig: das Bild zerfällt gleich. */
+.balken.knapp span { background: var(--farbe-warnung); }
+
+/* Nur die Farbe - der Rahmen von .hinweis.warnung ist hier nicht gemeint. */
+.hinweis.knapp { color: var(--farbe-warnung); }
+
+/* --- Wahl des Rechenwegs --- */
+.modus-liste {
+  display: flex;
+  gap: var(--abstand-1);
+  margin-top: var(--abstand-3);
+}
+
+button.modus {
+  flex: 1;
+  padding: 4px 2px;
+  font-size: 10px;
+  text-align: center;
+}
+
+button.modus[aria-pressed="true"] {
+  border-color: var(--farbe-akzent);
+  color: var(--farbe-akzent);
+}
+
+button.modus:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

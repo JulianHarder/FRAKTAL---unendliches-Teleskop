@@ -1,0 +1,44 @@
+/* Das Design-Stellrad. Farben, Abstände und Zeiten nur hier ändern. */
+:root {
+  /* Oberfläche – dunkel, leicht ins Violette, damit das Fraktal leuchtet */
+  --farbe-grund:        #0c0b12;
+  --farbe-flaeche:      #141320;
+  --farbe-flaeche-hoch: #1d1b2c;
+  --farbe-rand:         #2a2740;
+  --farbe-rand-hell:    #3d3857;
+
+  /* Schrift */
+  --farbe-text:       #ece9f5;
+  --farbe-text-leise: #9e98b8;
+  --farbe-text-still: #6f6a8a;
+
+  /* Akzente */
+  --farbe-akzent:        #e2a33c;
+  --farbe-akzent-dunkel: #8a5f16;
+  --farbe-kalt:          #6ba8e8;
+  --farbe-gut:           #7ec699;
+  --farbe-warnung:       #e2703c;
+
+  /* Maße */
+  --abstand-1: 4px;
+  --abstand-2: 8px;
+  --abstand-3: 12px;
+  --abstand-4: 18px;
+  --abstand-5: 26px;
+  --radius:       8px;
+  --radius-klein: 5px;
+
+  --schrift:      "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --schrift-fest: "Cascadia Mono", "DejaVu Sans Mono", Consolas, monospace;
+  --text-klein:  12px;
+  --text-normal: 14px;
+  --text-gross:  17px;
+
+  --seitenleiste-breite: 290px;
+  --kopf-hoehe: 54px;
+
+  --zeit-kurz:   120ms;
+  --zeit-mittel: 260ms;
+
+  --schatten: 0 8px 28px rgba(0, 0, 0, 0.55);
+}

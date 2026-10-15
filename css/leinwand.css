@@ -1,0 +1,61 @@
+/* Die Leinwand: ein Canvas, das den ganzen Bereich füllt. Das Fraktal wird
+ * komplett im Shader gerechnet, hier liegt nur die Hülle. */
+.leinwand-bereich {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: #000;
+}
+
+#leinwand {
+  display: block;              /* sonst lässt die Zeilenhöhe einen Spalt */
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+
+  /* Ohne touch-action übernimmt der Browser Wischen und Kneifen selbst und
+   * scrollt die Seite, statt uns die Pointer-Events zu geben. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Während gezogen wird. */
+#leinwand.greift { cursor: grabbing; }
+
+/* Hinweis, wenn der Browser kein WebGL2 kann. */
+.kein-webgl {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: var(--abstand-3);
+  padding: var(--abstand-5);
+  text-align: center;
+  background: var(--farbe-grund);
+}
+
+.kein-webgl h2 {
+  margin: 0;
+  font-size: var(--text-gross);
+}
+
+.kein-webgl p {
+  max-width: 44ch;
+  margin: 0 auto;
+  color: var(--farbe-text-leise);
+}
+
+/* Ladehinweis über der Leinwand. */
+.leinwand-ladung {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: var(--abstand-2) var(--abstand-4);
+  background: rgba(12, 11, 18, 0.85);
+  border: 1px solid var(--farbe-rand);
+  border-radius: var(--radius);
+  font-size: var(--text-klein);
+  color: var(--farbe-text-leise);
+}

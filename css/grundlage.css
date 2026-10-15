@@ -1,0 +1,112 @@
+/* Grundlayout: Kopfzeile oben, Leinwand und Seitenleiste in der Mitte,
+ * Fußzeile unten. Die Leinwand nimmt allen Platz, der übrig bleibt. */
+* { box-sizing: border-box; }
+
+/* Das hidden-Attribut muss staerker sein als jede eigene display-Regel.
+ * Ohne das !important zeigt sich ein Fenster mit `display: grid` trotz
+ * `hidden` weiter - und liegt dann unsichtbar ueber der Leinwand. */
+[hidden] { display: none !important; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: grid;
+  grid-template-rows: var(--kopf-hoehe) 1fr auto;
+  background: var(--farbe-grund);
+  color: var(--farbe-text);
+  font: var(--text-normal) / 1.5 var(--schrift);
+  overflow: hidden;            /* die Leinwand scrollt nie */
+}
+
+/* --- Kopfzeile --- */
+.kopf {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand-4);
+  padding: 0 var(--abstand-4);
+  background: var(--farbe-flaeche);
+  border-bottom: 1px solid var(--farbe-rand);
+}
+
+.marke {
+  display: flex;
+  align-items: baseline;
+  gap: var(--abstand-2);
+  font-size: var(--text-gross);
+  font-weight: 600;
+  letter-spacing: 2.5px;
+}
+
+.marke span {
+  font-size: var(--text-klein);
+  font-weight: 400;
+  letter-spacing: 0.4px;
+  color: var(--farbe-text-still);
+}
+
+.kopf-werkzeuge {
+  display: flex;
+  gap: var(--abstand-2);
+  margin-left: auto;
+}
+
+/* --- Knöpfe --- */
+button {
+  padding: 6px 12px;
+  background: var(--farbe-flaeche-hoch);
+  color: var(--farbe-text);
+  border: 1px solid var(--farbe-rand);
+  border-radius: var(--radius-klein);
+  font: var(--text-klein) / 1 var(--schrift);
+  cursor: pointer;
+  transition: background var(--zeit-kurz), border-color var(--zeit-kurz);
+}
+
+button:hover {
+  background: var(--farbe-rand);
+  border-color: var(--farbe-rand-hell);
+}
+
+button.wichtig {
+  background: var(--farbe-akzent-dunkel);
+  border-color: var(--farbe-akzent);
+}
+
+/* --- Mitte --- */
+main {
+  display: grid;
+  grid-template-columns: 1fr var(--seitenleiste-breite);
+  min-height: 0;               /* sonst wächst das Grid über das Fenster */
+}
+
+/* --- Fußzeile --- */
+.fuss {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--abstand-4);
+  padding: var(--abstand-2) var(--abstand-4);
+  background: var(--farbe-flaeche);
+  border-top: 1px solid var(--farbe-rand);
+  font-size: var(--text-klein);
+  color: var(--farbe-text-still);
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--farbe-flaeche-hoch);
+  border: 1px solid var(--farbe-rand);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font: 11px / 1.4 var(--schrift-fest);
+  color: var(--farbe-text-leise);
+}
+
+/* --- Schmales Fenster: Seitenleiste unter die Leinwand --- */
+@media (max-width: 860px) {
+  main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .seitenleiste { max-height: 40vh; }
+}
