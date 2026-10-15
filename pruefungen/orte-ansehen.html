@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>FRAKTAL – Orte ansehen</title>
+<link rel="stylesheet" href="../css/variablen.css">
+<style>
+  body { margin: 0; padding: 26px; background: var(--farbe-grund); color: var(--farbe-text);
+         font: 14px/1.6 var(--schrift); }
+  h1 { font-size: 19px; letter-spacing: 1.5px; margin: 0 0 4px; }
+  p.unter { margin: 0 0 22px; color: var(--farbe-text-leise); max-width: 76ch; }
+  .reihe { display: flex; flex-wrap: wrap; gap: 18px; }
+  .karte { width: 260px; background: var(--farbe-flaeche); border: 1px solid var(--farbe-rand);
+           border-radius: var(--radius); overflow: hidden; }
+  .karte canvas { display: block; width: 260px; height: 170px; background: #000; }
+  .karte div { padding: 8px 10px 10px; }
+  .karte b { display: block; font-size: var(--text-normal); }
+  .karte i { display: block; font: 11px var(--schrift-fest); font-style: normal;
+             color: var(--farbe-akzent); margin: 2px 0 6px; }
+  .karte span { display: block; font-size: 11px; line-height: 1.5; color: var(--farbe-text-still); }
+  #leinwand { display: none; }
+</style>
+</head>
+<body>
+
+<h1>Sehen die Orte aus wie ihre Namen?</h1>
+<p class="unter">
+  Die Koordinaten in <code>js/daten/orte.js</code> lassen sich nicht ausrechnen,
+  nur ansehen: ob im Seepferdchen-Tal wirklich Seepferdchen stehen und ob das
+  Mini-Mandelbrot wirklich eines ist, entscheidet das Auge. Jede Karte ist mit
+  derselben Rechnung gemalt wie das große Bild, nur klein.
+</p>
+
+<canvas id="leinwand" width="8" height="8"></canvas>
+<div class="reihe" id="reihe"></div>
+
+<script src="../js/daten/paletten.js"></script>
+<script src="../js/daten/orte.js"></script>
+<script src="../js/kern/Zustand.js"></script>
+<script src="../js/kern/Zahl.js"></script>
+<script src="../js/shader/vertex.js"></script>
+<script src="../js/shader/bausteine.js"></script>
+<script src="../js/shader/fraktal.js"></script>
+<script src="../js/gl/Kontext.js"></script>
+<script src="../js/gl/Programm.js"></script>
+<script src="../js/gl/Leinwand.js"></script>
+<script src="../js/gl/PalettenTextur.js"></script>
+<script src="../js/gl/Ziel.js"></script>
+<script src="../js/ansicht/Iterationen.js"></script>
+<script src="../js/ansicht/Genauigkeit.js"></script>
+<script src="../js/ansicht/Zeichner.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var BREITE = 260, HOEHE = 170;
+
+  var leinwand = document.getElementById('leinwand');
+  var gl = FRAKTAL.Kontext.erzeugen(leinwand);
+  var reihe = document.getElementById('reihe');
+  if (!gl) { reihe.textContent = 'Kein WebGL2 – hier ist nichts zu sehen.'; return; }
+
+  FRAKTAL.Leinwand.starten(gl, leinwand);
+  FRAKTAL.PalettenTextur.starten(gl);
+  FRAKTAL.PalettenTextur.waehlen('feuer');
+  FRAKTAL.Genauigkeit.doppeltVerfuegbar(true);
+
+  var einfach = FRAKTAL.Programm.bauen(gl, FRAKTAL.Shader.vertex, FRAKTAL.Shader.fraktal(false));
+  var doppelt = null;
+  try {
+    doppelt = FRAKTAL.Programm.bauen(gl, FRAKTAL.Shader.vertex, FRAKTAL.Shader.fraktal(true));
+  } catch (f) { console.warn(f.message); }
+  FRAKTAL.Zeichner.starten(gl, { einfach: einfach, doppelt: doppelt });
+
+  var ziel = FRAKTAL.Ziel.erzeugen(gl, BREITE, HOEHE);
+  var puffer = new Uint8Array(BREITE * HOEHE * 4);
+
+  FRAKTAL.Orte.liste.forEach(function (ort) {
+    var karte = document.createElement('div');
+    karte.className = 'karte';
+
+    var bildFlaeche = document.createElement('canvas');
+    bildFlaeche.width = BREITE;
+    bildFlaeche.height = HOEHE;
+    karte.appendChild(bildFlaeche);
+
+    var text = document.createElement('div');
+    text.innerHTML = '<b></b><i></i><span></span>';
+    text.querySelector('b').textContent = ort.titel;
+    text.querySelector('i').textContent = 'Zoom ' + ort.zoom.toLocaleString('de-DE')
+      + '  ·  ' + ort.re + (ort.im < 0 ? ' − ' : ' + ') + Math.abs(ort.im) + 'i';
+    text.querySelector('span').textContent = ort.satz;
+    karte.appendChild(text);
+    reihe.appendChild(karte);
+
+    var stand = FRAKTAL.Orte.alsStand(ort);
+    var weltHoehe = FRAKTAL.Zustand.BASIS_HOEHE / Math.pow(2, stand.log2Zoom);
+
+    FRAKTAL.Zeichner.inZiel(ziel, {
+      breite: BREITE, hoehe: HOEHE,
+      mitteRe: stand.mitteRe, mitteIm: stand.mitteIm,
+      skala: weltHoehe / HOEHE,
+      iterationen: FRAKTAL.Iterationen.fuer(stand.log2Zoom, 1.0),
+      proben: 1, julia: false, cRe: 0, cIm: 0
+    });
+
+    ziel.lesen(puffer);
+    var ctx = bildFlaeche.getContext('2d');
+    var bild = ctx.createImageData(BREITE, HOEHE);
+    FRAKTAL.Ziel.spiegeln(puffer, bild.data, BREITE, HOEHE);
+    ctx.putImageData(bild, 0, 0);
+  });
+
+  document.title = 'Orte ansehen – ' + FRAKTAL.Orte.liste.length + ' Stellen gemalt';
+})();
+</script>
+</body>
+</html>

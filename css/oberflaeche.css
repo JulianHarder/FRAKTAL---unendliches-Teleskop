@@ -166,3 +166,107 @@ button.modus:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* --- Berühmte Stellen --- */
+.orte-liste {
+  display: grid;
+  gap: var(--abstand-1);
+  margin-bottom: var(--abstand-3);
+}
+
+button.ort {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--abstand-2);
+  width: 100%;
+  padding: 5px 7px;
+  text-align: left;
+}
+
+button.ort b {
+  font: 10px var(--schrift-fest);
+  font-weight: 600;
+  color: var(--farbe-text-still);
+}
+
+button.ort:hover b { color: var(--farbe-akzent); }
+
+/* --- Lesezeichen --- */
+.lesezeichen-liste {
+  display: grid;
+  gap: var(--abstand-1);
+}
+
+.lesezeichen {
+  display: flex;
+  gap: var(--abstand-1);
+}
+
+button.lesezeichen-ziel {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand-2);
+  flex: 1;
+  min-width: 0;
+  padding: 4px;
+  text-align: left;
+}
+
+/* Das Vorschaubild – 96×64, wie es gespeichert wurde. */
+button.lesezeichen-ziel img {
+  display: block;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+button.lesezeichen-ziel span {
+  display: grid;
+  min-width: 0;
+}
+
+button.lesezeichen-ziel b {
+  font-size: var(--text-klein);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.lesezeichen-ziel i {
+  font: 10px var(--schrift-fest);
+  font-style: normal;
+  color: var(--farbe-text-still);
+}
+
+button.lesezeichen-weg {
+  flex: 0 0 24px;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--farbe-text-still);
+}
+
+button.lesezeichen-weg:hover {
+  color: var(--farbe-warnung);
+  border-color: var(--farbe-warnung);
+}
+
+.knopf-reihe {
+  display: flex;
+  gap: var(--abstand-1);
+  margin-top: var(--abstand-3);
+}
+
+.knopf-reihe button { flex: 1; }
+
+/* Der Dauerzoom-Knopf in der Kopfzeile, solange er läuft. */
+#knopf-dauerzoom[aria-pressed="true"] {
+  background: var(--farbe-akzent-dunkel);
+  border-color: var(--farbe-akzent);
+  color: var(--farbe-text);
+}

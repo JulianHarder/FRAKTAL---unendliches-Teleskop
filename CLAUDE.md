@@ -12,7 +12,7 @@ Oberfläche ehrlich an – sie wird nicht versteckt.
 
 ## Stand (Oktober 2026)
 
-**Fertig und geprüft: Etappen 1 bis 5.** Als Nächstes steht Etappe 6 an.
+**Fertig und geprüft: Etappen 1 bis 6.** Als Nächstes steht Etappe 7 an.
 
 1. **Gerüst** – WebGL2-Kontext, Vollbild-Dreieck ohne Puffer, Menge in Graustufen.
 2. **Navigation** – Zoom zum Mauszeiger (im Zweierlogarithmus), Ziehen, Kneifen,
@@ -25,9 +25,13 @@ Oberfläche ehrlich an – sie wird nicht versteckt.
 5. **Julia** – Vorschau unter dem Mauszeiger, Klick holt die Menge auf die
    Hauptbühne, `J` wechselt hin und zurück. Beide Mengen haben eine eigene
    Kamera, die beim Wechseln gemerkt wird.
+6. **Reisen** – sechs berühmte Stellen mit Hinflug im Bogen, eigene
+   Lesezeichen mit Vorschaubild in `localStorage`, Link hinter dem
+   Doppelkreuz (`L`), Dauerzoom auf der Leertaste. Stand und Regler
+   überleben das Neuladen.
 
-Offen: **6** Orte, Lesezeichen, Link, Dauerzoom ·
-**7** PNG-Export, Hilfe, README, Feinschliff · **8** Kopie ins Portfolio.
+Offen: **7** PNG-Export, Hilfe, README, Feinschliff ·
+**8** Kopie ins Portfolio.
 Die vollständige Beschreibung aller acht Etappen steht in `FRAKTAL-Plan.md`.
 
 ### Wo von diesem Plan abgewichen wurde
@@ -52,6 +56,18 @@ Die vollständige Beschreibung aller acht Etappen steht in `FRAKTAL-Plan.md`.
   für alle Pixel gleich.
 - **Zwei Dateien mehr als im Plan:** `js/gl/Ziel.js` (Zeichenziel) und
   `js/ansicht/Menge.js` (Wechsel samt Kamera-Gedächtnis).
+- **Der Hinflug schwenkt nach dem Ausschnitt, nicht nach der Uhr.** Siehe
+  Fallstricke – der Plan sagte nur „interpoliert über ~1,5 s“, und genau so
+  gebaut sieht man vom Flug nichts.
+- **Die Adresse wird nur auf Zuruf geschrieben** (Taste `L`), nicht bei jeder
+  Bewegung. Ein Hash, der sich ständig ändert, füllt die Zurück-Liste des
+  Browsers mit hunderten Zwischenstellen.
+- **Die Koordinaten der Orte sind nachgesehen, nicht abgeschrieben.** Die aus
+  der Literatur geläufigen Werte trafen ihre Namen zum Teil nicht: bei der
+  Tripelspirale lag die Figur außerhalb des Bildes, und am klassischen
+  tiefen Punkt (−0,743643887…) steht bei Zoom 1e7 keine kleine Menge,
+  sondern Gischt – das Mini-Mandelbrot sitzt dort bei 5e5. Nachgesehen wird
+  mit `pruefungen/orte-ansehen.html`.
 - **Beim Einfärben wird 1,0 abgezogen** (`js/shader/fraktal.js`). Wegen des
   Fluchtradius 256 beginnt die weiche Iterationszahl nicht bei 0, sondern bei
   etwa 1 – ohne den Abzug startet das weite Außenfeld mitten in der Palette
@@ -101,6 +117,14 @@ Diese drei haben im Projekt schon zugeschlagen:
   Mischt man `performance.now()` und die Bildtakt-Zeit, kann die letzte
   Eingabe für immer als „gerade eben" gelten – das Bild bleibt dann dauerhaft
   grob, ohne dass irgendwo ein Fehler erscheint.
+- **Ein Hinflug, der nach der Uhr schwenkt, zeigt nichts.** Wird die Mitte
+  gleichmäßig über die Flugzeit interpoliert, steht das Ziel bei halber Zeit
+  rechnerisch fast da – und trotzdem sechzehn Bildhöhen daneben, weil der
+  Maßstab inzwischen tausendfach feiner ist. Man sieht einen leeren Anflug
+  und am Schluss ein Bild, das von der Seite hereinspringt. Deshalb hängt der
+  Schwenk in `Kamera.js` am Ausschnitt: das Ziel bleibt immer innerhalb von
+  0,35 Bildhöhen. Dazu der Bogen – erst hinaus, bis der Weg ins Bild passt,
+  dann hinüber, dann hinein.
 - **Innen und außen sind an der Farbe nicht immer zu unterscheiden.** Wer ein
   Bild nachrechnen will, braucht ablesbare Pixel – bei „Feuer" ist die
   Innenfarbe `[10, 6, 14]` und der Palettenanfang `[8, 4, 18]`, und genau dort
@@ -118,10 +142,11 @@ Diese drei haben im Projekt schon zugeschlagen:
 
 ## Prüfen
 
-In `pruefungen/` liegen sechs Node-Skripte, die ohne Browser laufen und
-zusammen rund 130 Einzelprüfungen machen – Kameramathematik, Maus- und
+In `pruefungen/` liegen sieben Node-Skripte, die ohne Browser laufen und
+zusammen rund 170 Einzelprüfungen machen – Kameramathematik, Maus- und
 Tastatur-Verdrahtung gegen ein Stub-DOM, Grob/Fein-Logik mit gestellter Uhr,
-Palettentextur, die Wahl des Rechenwegs und den Wechsel der Menge:
+Palettentextur, die Wahl des Rechenwegs, den Wechsel der Menge, den Flug zu
+einer Stelle, Adresse, Speicher (samt vollem localStorage) und Dauerzoom:
 
 ```
 for f in pruefungen/*.js; do node "$f"; done
@@ -138,6 +163,10 @@ einfach doppelklicken:
 - `pruefungen/julia-nachrechnen.html` rechnet die Julia-Mengen in JavaScript
   nach und vergleicht sie Punkt für Punkt mit dem, was die Vorschau zeigt –
   samt Zeilenordnung des `readPixels`.
+- `pruefungen/orte-ansehen.html` malt jede Stelle aus `js/daten/orte.js` als
+  Karte nebeneinander. Ob im Seepferdchen-Tal wirklich Seepferdchen stehen,
+  lässt sich nicht ausrechnen – nur ansehen. Nach jeder Änderung an den
+  Koordinaten aufmachen.
 
 **Zum Bilderprüfen:** Der Browser-Pane in Claude Desktop kann kein WebGL, dort
 bleibt die Leinwand leer. Stattdessen kopfloses Chrome mit Software-Rendering:

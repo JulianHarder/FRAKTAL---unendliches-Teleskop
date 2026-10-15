@@ -19,6 +19,7 @@ FRAKTAL.Haupt = (function () {
 
   var TEMPO = 0.8;        // Bildhoehen je Sekunde beim Schieben mit Tasten
   var ZOOM_TEMPO = 1.8;   // log2-Stufen je Sekunde bei + und -
+  var MERK_ABSTAND = 2000; // Millisekunden zwischen zwei Schreibvorgaengen
 
   var leinwand = null;
   var gl = null;
@@ -28,9 +29,18 @@ FRAKTAL.Haupt = (function () {
   var bildrateZeit = 0;
   var letzteBreite = 0;
   var letzteHoehe = 0;
+  var merkZeit = 0;
+  var letzterStand = '';
 
   function starten() {
     leinwand = document.getElementById('leinwand');
+
+    /* Erst der gemerkte Stand, dann die Adresse: ein geteilter Link soll das
+     * Gedaechtnis ueberstimmen. Wer einen Link bekommt, will die Stelle aus
+     * dem Link sehen und nicht die, bei der er selbst zuletzt war. */
+    FRAKTAL.Speicher.laden();
+    FRAKTAL.Speicher.standAnwenden(z);
+    FRAKTAL.Adresse.lesen();
 
     gl = FRAKTAL.Kontext.erzeugen(leinwand);
     if (!gl) {
@@ -52,6 +62,10 @@ FRAKTAL.Haupt = (function () {
 
     FRAKTAL.JuliaVorschau.starten(gl);
     FRAKTAL.Menge.horchen(mengeGewechselt);
+    FRAKTAL.Meldung.starten();
+    FRAKTAL.Ortswahl.starten(function () { FRAKTAL.Zeichner.eingabe(); });
+    FRAKTAL.Lesezeichen.starten(gl, function () { FRAKTAL.Zeichner.eingabe(); });
+    FRAKTAL.Dauerzoom.horchen(dauerzoomGewechselt);
 
     FRAKTAL.Maus.starten(leinwand);
     FRAKTAL.Farbwahl.starten(function () { FRAKTAL.Zeichner.eingabe(); });
@@ -59,9 +73,19 @@ FRAKTAL.Haupt = (function () {
       einpassen: uebersicht,
       palette: function (nummer) { FRAKTAL.Farbwahl.nachNummer(nummer); },
       rechenweg: function () { FRAKTAL.Rechenmodus.weiter(); },
-      menge: mengeWechseln
+      menge: mengeWechseln,
+      lesezeichen: function () { FRAKTAL.Lesezeichen.setzen(); },
+      verweis: function () { FRAKTAL.Verweis.kopieren(); },
+      dauerzoom: function () { FRAKTAL.Dauerzoom.umschalten(); }
     });
+
     document.getElementById('knopf-uebersicht').addEventListener('click', uebersicht);
+    document.getElementById('knopf-dauerzoom')
+      .addEventListener('click', function () { FRAKTAL.Dauerzoom.umschalten(); });
+    document.getElementById('knopf-merken')
+      .addEventListener('click', function () { FRAKTAL.Lesezeichen.setzen(); });
+    document.getElementById('knopf-link')
+      .addEventListener('click', function () { FRAKTAL.Verweis.kopieren(); });
 
     letzteBreite = leinwand.clientWidth;
     letzteHoehe = leinwand.clientHeight;
@@ -146,7 +170,26 @@ FRAKTAL.Haupt = (function () {
   }
 
   function uebersicht() {
+    FRAKTAL.Dauerzoom.aus();
     FRAKTAL.Kamera.einpassen();
+    FRAKTAL.Zeichner.eingabe();
+  }
+
+  /* Der Dauerzoom ist an- oder ausgegangen. Geht er von selbst aus, steht in
+   * `grund`, warum - und das gehoert gesagt: wer nicht erfaehrt, dass die
+   * Genauigkeit zu Ende ist, haelt das Anhalten fuer einen Fehler. */
+  function dauerzoomGewechselt(laeuft, grund) {
+    var knopf = document.getElementById('knopf-dauerzoom');
+    if (knopf) knopf.setAttribute('aria-pressed', laeuft ? 'true' : 'false');
+
+    if (laeuft) {
+      FRAKTAL.Meldung.zeigen('Dauerzoom läuft – Leertaste hält an.');
+    } else if (grund === 'grenze') {
+      FRAKTAL.Meldung.zeigen('Dauerzoom angehalten: die Genauigkeit ist am Ende. '
+        + 'Tiefer wird das Bild stufig, nicht detaillierter.');
+    } else if (grund === 'anschlag') {
+      FRAKTAL.Meldung.zeigen('Dauerzoom angehalten: tiefer geht die Kamera nicht.');
+    }
     FRAKTAL.Zeichner.eingabe();
   }
 
@@ -167,6 +210,8 @@ FRAKTAL.Haupt = (function () {
     if (dt > 0.1) dt = 0.1;
 
     var bewegt = tasten(dt);
+    // Vor der Kamera: der Dauerzoom schiebt das Ziel, die Kamera zieht nach.
+    if (FRAKTAL.Dauerzoom.schritt(dt)) bewegt = true;
     if (FRAKTAL.Kamera.schritt(dt)) bewegt = true;
 
     if (FRAKTAL.Zeichner.schritt(jetzt, bewegt)) bildzaehler++;
@@ -177,6 +222,7 @@ FRAKTAL.Haupt = (function () {
     FRAKTAL.JuliaVorschau.schritt(bewegt);
 
     bildrateMessen(jetzt);
+    standMerken(jetzt);
     FRAKTAL.Seitenleiste.aktualisieren(z);
     window.requestAnimationFrame(schleife);
   }
@@ -191,6 +237,26 @@ FRAKTAL.Haupt = (function () {
 
     FRAKTAL.Zeichner.eingabe();
     return true;
+  }
+
+  /* Den Stand ab und zu wegschreiben, damit das naechste Laden dort anfaengt,
+   * wo man aufgehoert hat.
+   *
+   * Nicht bei jeder Bewegung: localStorage schreibt synchron auf die Platte,
+   * und waehrend einer Mausradserie waeren das hundert Schreibvorgaenge, die
+   * alle der Bildschleife im Weg stehen. Alle zwei Sekunden genuegt - und nur
+   * dann, wenn sich wirklich etwas geaendert hat. */
+  function standMerken(jetzt) {
+    if (jetzt - merkZeit < MERK_ABSTAND) return;
+    merkZeit = jetzt;
+
+    var jetztStand = [z.ansicht.mitteRe, z.ansicht.mitteIm, z.ansicht.log2Zoom,
+      z.menge, z.julia.re, z.julia.im, z.regler.palette, z.regler.dichte,
+      z.regler.verschiebung, z.regler.qualitaet, z.regler.rechenmodus].join('|');
+    if (jetztStand === letzterStand) return;
+
+    letzterStand = jetztStand;
+    FRAKTAL.Speicher.standMerken(z);
   }
 
   /* Gezaehlt werden nur wirklich gerechnete Bilder, nicht die Leerlaufrunden -

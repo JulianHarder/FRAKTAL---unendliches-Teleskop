@@ -35,6 +35,13 @@ FRAKTAL.Tastatur = (function () {
     var name = nameVon(ereignis);
     gedrueckt[name] = true;
 
+    /* Das Betriebssystem wiederholt gehaltene Tasten. Die Richtungstasten
+     * leben davon nicht - sie werden gehalten abgefragt -, die einmaligen
+     * Aktionen aber duerfen nichts davon mitbekommen: ein liegengebliebener
+     * Finger auf der Leertaste schaltete den Dauerzoom sonst dreissigmal in
+     * der Sekunde an und aus. */
+    if (ereignis.repeat) return;
+
     if (name === 'Digit0' || name === 'Numpad0' || ereignis.key === '0') {
       aufrufen('einpassen');
       ereignis.preventDefault();
@@ -49,6 +56,25 @@ FRAKTAL.Tastatur = (function () {
 
     if (name === 'KeyJ' || ereignis.key === 'j' || ereignis.key === 'J') {
       aufrufen('menge');
+      ereignis.preventDefault();
+      return;
+    }
+
+    if (name === 'KeyB' || ereignis.key === 'b' || ereignis.key === 'B') {
+      aufrufen('lesezeichen');
+      ereignis.preventDefault();
+      return;
+    }
+
+    if (name === 'KeyL' || ereignis.key === 'l' || ereignis.key === 'L') {
+      aufrufen('verweis');
+      ereignis.preventDefault();
+      return;
+    }
+
+    // Die Leertaste scrollt sonst die Seite.
+    if (name === 'Space' || ereignis.key === ' ' || ereignis.key === 'Spacebar') {
+      aufrufen('dauerzoom');
       ereignis.preventDefault();
       return;
     }

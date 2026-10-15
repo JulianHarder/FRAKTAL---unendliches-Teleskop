@@ -179,12 +179,18 @@ FRAKTAL.Zeichner = (function () {
   /* Ein Bild in ein Ziel neben dem Bildschirm zeichnen - die Julia-Vorschau
    * (js/ui/JuliaVorschau.js) holt sich die Pixel danach von dort.
    *
-   * Gerechnet wird immer auf dem einfachen Weg: die Vorschau zeigt die ganze
-   * Menge bei Zoom ~1, dort traegt er ein Vielfaches der noetigen Stellen. */
+   * Welcher Rechenweg, entscheidet dasselbe Mass wie beim Hauptbild - nur
+   * fuer dieses kleine Bild gerechnet. Die Julia-Vorschau steht immer bei
+   * Zoom ~1 und kommt mit dem einfachen Weg aus; das Vorschaubild eines
+   * Lesezeichens von einer tiefen Stelle zerfiele damit in Kloetzchen,
+   * waehrend das grosse Bild daneben scharf ist. */
   function inZiel(ziel, o) {
     if (!gl || !ziel || !ziel.taugt || !programme.einfach) return false;
 
-    bildSetzen(programme.einfach, o);
+    var log2Zoom = Math.log2(z.BASIS_HOEHE / (o.skala * o.hoehe));
+    var knapp = FRAKTAL.Genauigkeit.stellen(log2Zoom, o.hoehe, 'einfach')
+              < FRAKTAL.Genauigkeit.KNAPP;
+    bildSetzen((knapp && programme.doppelt) || programme.einfach, o);
     ziel.binden();
     FRAKTAL.Leinwand.zeichnen(ziel.breite, ziel.hoehe);
     ziel.loesen();

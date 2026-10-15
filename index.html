@@ -19,6 +19,8 @@
   <div class="marke">FRAKTAL<span>unendliches Teleskop</span></div>
 
   <div class="kopf-werkzeuge">
+    <button type="button" id="knopf-dauerzoom" aria-pressed="false"
+            title="Fährt von allein weiter hinein, bis die Genauigkeit endet (Leertaste)">Dauerzoom</button>
     <button type="button" id="knopf-uebersicht" title="Zurück zur Übersicht (0)">Übersicht</button>
   </div>
 </header>
@@ -26,6 +28,12 @@
 <main>
   <section class="leinwand-bereich">
     <canvas id="leinwand"></canvas>
+
+    <!-- Kurze Rückmeldungen: Lesezeichen gesetzt, Link kopiert, Grenze erreicht -->
+    <div class="meldung" id="meldung" hidden>
+      <p id="meldung-text"></p>
+      <p class="meldung-zusatz" id="meldung-zusatz" hidden></p>
+    </div>
 
     <!-- Julia-Vorschau: folgt dem Zeiger, ein Klick holt sie auf die Bühne -->
     <div class="vorschau" id="vorschau" hidden>
@@ -58,6 +66,23 @@
       <div class="kennzahl"><span>Realteil</span><b id="wert-re">–</b></div>
       <div class="kennzahl"><span>Imaginärteil</span><b id="wert-im">–</b></div>
       <div class="kennzahl" id="zeile-julia" hidden><span>Festes c</span><b class="akzent" id="wert-julia-c">–</b></div>
+    </div>
+
+    <div class="block">
+      <h2>Stellen</h2>
+      <div class="orte-liste" id="orte-liste"></div>
+      <p class="hinweis">Angeklickt wird hingeflogen, nicht gesprungen – man
+        sieht die Ebenen vorbeiziehen.</p>
+    </div>
+
+    <div class="block">
+      <h2>Lesezeichen</h2>
+      <div class="lesezeichen-liste" id="lesezeichen-liste"></div>
+      <p class="hinweis" id="lesezeichen-hinweis"></p>
+      <div class="knopf-reihe">
+        <button type="button" id="knopf-merken" title="Diese Stelle merken (B)">Merken</button>
+        <button type="button" id="knopf-link" title="Link zu dieser Stelle kopieren (L)">Link</button>
+      </div>
     </div>
 
     <div class="block">
@@ -103,6 +128,9 @@
   <span><kbd>G</kbd> – Rechenweg</span>
   <span><kbd>Klick</kbd> auf die Vorschau – Julia groß</span>
   <span><kbd>J</kbd> – Julia und zurück</span>
+  <span><kbd>Leertaste</kbd> – Dauerzoom</span>
+  <span><kbd>B</kbd> – Lesezeichen</span>
+  <span><kbd>L</kbd> – Link kopieren</span>
 </footer>
 
 <!-- Skripte: klassische Tags in fester Reihenfolge, kein type="module".
@@ -113,10 +141,13 @@
 <!-- Daten (zuerst, alle anderen lesen daraus) -->
 <script src="js/daten/paletten.js"></script>
 <script src="js/daten/texte.js"></script>
+<script src="js/daten/orte.js"></script>
 
 <!-- Kern -->
 <script src="js/kern/Zustand.js"></script>
 <script src="js/kern/Zahl.js"></script>
+<script src="js/kern/Speicher.js"></script>
+<script src="js/kern/Adresse.js"></script>
 
 <!-- Shader-Quellen (JS-Strings, keine .glsl-Dateien: fetch ist
      ueber file:// ebenfalls blockiert) -->
@@ -136,10 +167,15 @@
 <script src="js/ansicht/Menge.js"></script>
 <script src="js/ansicht/Iterationen.js"></script>
 <script src="js/ansicht/Genauigkeit.js"></script>
+<script src="js/ansicht/Dauerzoom.js"></script>
 <script src="js/ansicht/Zeichner.js"></script>
 
 <!-- Oberflaeche -->
+<script src="js/ui/Meldung.js"></script>
 <script src="js/ui/Seitenleiste.js"></script>
+<script src="js/ui/Ortswahl.js"></script>
+<script src="js/ui/Lesezeichen.js"></script>
+<script src="js/ui/Verweis.js"></script>
 <script src="js/ui/Farbwahl.js"></script>
 <script src="js/ui/Rechenmodus.js"></script>
 <script src="js/ui/JuliaVorschau.js"></script>

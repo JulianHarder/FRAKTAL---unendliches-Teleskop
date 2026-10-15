@@ -69,5 +69,17 @@ FRAKTAL.Ziel = (function () {
     };
   }
 
-  return { erzeugen: erzeugen };
+  /* readPixels zaehlt die Zeilen von unten, jeder 2D-Canvas von oben. Wer
+   * die Pixel in ein Bild uebernimmt, muss sie also spiegeln - sonst steht
+   * das Ergebnis kopf. Das faellt bei einem Fraktal nicht unbedingt auf, und
+   * genau deshalb steht es hier und nicht in jedem Aufrufer noch einmal. */
+  function spiegeln(von, nach, breite, hoehe) {
+    var zeile = breite * 4;
+    for (var y = 0; y < hoehe; y++) {
+      nach.set(von.subarray(y * zeile, y * zeile + zeile), (hoehe - 1 - y) * zeile);
+    }
+    return nach;
+  }
+
+  return { erzeugen: erzeugen, spiegeln: spiegeln };
 })();

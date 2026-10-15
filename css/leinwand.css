@@ -122,3 +122,34 @@
   .vorschau, #vorschau-leinwand { width: 132px; }
   #vorschau-leinwand { height: 132px; }
 }
+
+/* --- Kurze Meldung über der Leinwand --- */
+.meldung {
+  position: absolute;
+  left: 50%;
+  top: var(--abstand-4);
+  transform: translateX(-50%);
+  max-width: min(62ch, calc(100% - 2 * var(--abstand-4)));
+  padding: var(--abstand-2) var(--abstand-4);
+  background: rgba(12, 11, 18, 0.92);
+  border: 1px solid var(--farbe-rand-hell);
+  border-radius: var(--radius);
+  box-shadow: var(--schatten);
+  font-size: var(--text-klein);
+  text-align: center;
+  pointer-events: none;          /* nie im Weg beim Ziehen */
+}
+
+.meldung p { margin: 0; }
+
+/* Der Nachtrag ist zum Markieren da – also doch Zeiger-Ereignisse. */
+.meldung-zusatz {
+  margin-top: var(--abstand-2) !important;
+  padding-top: var(--abstand-2);
+  border-top: 1px solid var(--farbe-rand);
+  font: 11px / 1.5 var(--schrift-fest);
+  color: var(--farbe-akzent);
+  word-break: break-all;
+  user-select: text;
+  pointer-events: auto;
+}

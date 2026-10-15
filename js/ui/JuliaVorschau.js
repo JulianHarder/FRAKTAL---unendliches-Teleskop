@@ -128,20 +128,10 @@ FRAKTAL.JuliaVorschau = (function () {
     if (!gelang) return false;
 
     ziel.lesen(puffer);
-    spiegeln(puffer, bild.data, ziel.breite, ziel.hoehe);
+    // Von unten gelesen, von oben gezeichnet - siehe js/gl/Ziel.js.
+    FRAKTAL.Ziel.spiegeln(puffer, bild.data, ziel.breite, ziel.hoehe);
     ctx.putImageData(bild, 0, 0);
     return true;
-  }
-
-  /* readPixels zaehlt die Zeilen von unten, ein 2D-Canvas von oben. Ohne das
-   * Spiegeln steht die Vorschau kopf - bei einer Julia-Menge faellt das nicht
-   * sofort auf, weil viele von ihnen punktsymmetrisch sind. Genau deshalb
-   * steht es hier. */
-  function spiegeln(von, nach, breite, hoehe) {
-    var zeile = breite * 4;
-    for (var y = 0; y < hoehe; y++) {
-      nach.set(von.subarray(y * zeile, y * zeile + zeile), (hoehe - 1 - y) * zeile);
-    }
   }
 
   function beiKlick() {

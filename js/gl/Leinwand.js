@@ -61,6 +61,15 @@ FRAKTAL.Leinwand = (function () {
     return { breite: breite, hoehe: hoehe };
   }
 
+  /* Die Hoehe bei voller Aufloesung, auch waehrend gerade grob gezeichnet
+   * wird. Die Genauigkeitsgrenze haengt an der echten Pixelgroesse - mit der
+   * halbierten Grobhoehe saehe es nach einer halben Stelle mehr aus, als das
+   * fertige Bild traegt. */
+  function volleHoehe() {
+    var dichte = Math.min(2, window.devicePixelRatio || 1);
+    return Math.max(1, Math.round(leinwand.clientHeight * dichte));
+  }
+
   /* Seitenverhaeltnis des Zeichenpuffers - die Kamera rechnet damit. */
   function verhaeltnis() {
     return breite / hoehe;
@@ -71,6 +80,7 @@ FRAKTAL.Leinwand = (function () {
     groesseAnpassen: groesseAnpassen,
     zeichnen: zeichnen,
     groesse: groesse,
+    volleHoehe: volleHoehe,
     verhaeltnis: verhaeltnis
   };
 })();
