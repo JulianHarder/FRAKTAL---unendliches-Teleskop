@@ -20,6 +20,11 @@ FRAKTAL.Zustand = (function () {
 
   var anfang = { mitteRe: -0.6, mitteIm: 0.0, log2Zoom: 0.0 };
 
+  /* Startansicht der Julia-Mengen. Sie liegen alle im Kreis |z| <= 2 um den
+   * Ursprung; log2Zoom -0,25 ergibt eine Sichthoehe von rund 3,6 und laesst
+   * damit auch den weit ausgreifenden Mengen rundherum Luft. */
+  var anfangJulia = { mitteRe: 0.0, mitteIm: 0.0, log2Zoom: -0.25 };
+
   var zustand = {
     ansicht: { mitteRe: anfang.mitteRe, mitteIm: anfang.mitteIm, log2Zoom: anfang.log2Zoom },
     ziel:    { mitteRe: anfang.mitteRe, mitteIm: anfang.mitteIm, log2Zoom: anfang.log2Zoom },
@@ -31,6 +36,17 @@ FRAKTAL.Zustand = (function () {
       dichte: 0.45,         // wie eng die Farbbaender liegen
       verschiebung: 0.0     // dreht die Palette durch (0 bis 1)
     },
+
+    /* Welche Menge auf der Hauptbuehne steht: 'mandelbrot' oder 'julia'. */
+    menge: 'mandelbrot',
+
+    /* Das feste c der Julia-Menge. -0,4 + 0,6i ist eine der bekannten
+     * Formen und steht nur da, damit die Taste J auch dann etwas zeigt,
+     * wenn die Vorschau noch nie einen Zeiger gesehen hat. */
+    julia: { re: -0.4, im: 0.6 },
+
+    /* Die verlassene Kamera der jeweils anderen Menge (siehe Menge.js). */
+    gemerkt: { mandelbrot: null, julia: null },
 
     laufzeit: {
       iterationen: 200,     // waechst mit dem Zoom mit (siehe Iterationen.js)
@@ -44,6 +60,7 @@ FRAKTAL.Zustand = (function () {
     },
 
     anfang: anfang,
+    anfangJulia: anfangJulia,
     BASIS_HOEHE: BASIS_HOEHE
   };
 

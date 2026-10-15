@@ -42,6 +42,7 @@ FRAKTAL.Haupt = (function () {
     FRAKTAL.PalettenTextur.starten(gl);
     FRAKTAL.PalettenTextur.waehlen(z.regler.palette);
     FRAKTAL.Seitenleiste.starten();
+    FRAKTAL.Seitenleiste.erklaerung(z.menge);
     FRAKTAL.Seitenleiste.grafikkarte(FRAKTAL.Kontext.faehigkeiten(gl).renderer);
     FRAKTAL.Kontext.ueberwachen(leinwand, neuAufbauen);
 
@@ -49,12 +50,16 @@ FRAKTAL.Haupt = (function () {
     FRAKTAL.Rechenmodus.starten(function () { FRAKTAL.Zeichner.eingabe(); });
     if (!programmBauen()) return;
 
+    FRAKTAL.JuliaVorschau.starten(gl);
+    FRAKTAL.Menge.horchen(mengeGewechselt);
+
     FRAKTAL.Maus.starten(leinwand);
     FRAKTAL.Farbwahl.starten(function () { FRAKTAL.Zeichner.eingabe(); });
     FRAKTAL.Tastatur.starten({
       einpassen: uebersicht,
       palette: function (nummer) { FRAKTAL.Farbwahl.nachNummer(nummer); },
-      rechenweg: function () { FRAKTAL.Rechenmodus.weiter(); }
+      rechenweg: function () { FRAKTAL.Rechenmodus.weiter(); },
+      menge: mengeWechseln
     });
     document.getElementById('knopf-uebersicht').addEventListener('click', uebersicht);
 
@@ -108,7 +113,25 @@ FRAKTAL.Haupt = (function () {
     FRAKTAL.Leinwand.starten(gl, leinwand);
     // Auch die Palettentextur lag auf der Grafikkarte und ist weg.
     FRAKTAL.PalettenTextur.starten(gl);
+    // Und das Zeichenziel der Julia-Vorschau.
+    FRAKTAL.JuliaVorschau.starten(gl);
     if (programmBauen()) FRAKTAL.Zeichner.eingabe();
+  }
+
+  /* Taste J: zwischen Mandelbrot- und Julia-Menge wechseln. Beim ersten Mal
+   * dient das c unter dem Zeiger als Startwert. */
+  function mengeWechseln() {
+    var c = FRAKTAL.JuliaVorschau.c();
+    if (c) FRAKTAL.Menge.wechseln(c.re, c.im);
+    else FRAKTAL.Menge.wechseln();
+  }
+
+  /* Die Menge hat gewechselt - egal ob per Taste oder per Klick auf die
+   * Vorschau. Oberflaeche nachziehen und ein neues Bild rechnen lassen. */
+  function mengeGewechselt(menge) {
+    FRAKTAL.Seitenleiste.erklaerung(menge);
+    FRAKTAL.JuliaVorschau.mengeGewechselt();
+    FRAKTAL.Zeichner.eingabe();
   }
 
   /* Browser melden `resize` auch, wenn sich an der Leinwand nichts aendert -
@@ -147,6 +170,11 @@ FRAKTAL.Haupt = (function () {
     if (FRAKTAL.Kamera.schritt(dt)) bewegt = true;
 
     if (FRAKTAL.Zeichner.schritt(jetzt, bewegt)) bildzaehler++;
+
+    /* Die Vorschau danach: sie zeichnet in ihr eigenes Ziel und laesst das
+     * Hauptbild in Ruhe. Faehrt die Kamera noch, wandert die Welt unter dem
+     * Zeiger weg - dann muss auch sie neu gerechnet werden. */
+    FRAKTAL.JuliaVorschau.schritt(bewegt);
 
     bildrateMessen(jetzt);
     FRAKTAL.Seitenleiste.aktualisieren(z);

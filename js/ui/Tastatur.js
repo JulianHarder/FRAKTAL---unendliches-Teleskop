@@ -47,6 +47,12 @@ FRAKTAL.Tastatur = (function () {
       return;
     }
 
+    if (name === 'KeyJ' || ereignis.key === 'j' || ereignis.key === 'J') {
+      aufrufen('menge');
+      ereignis.preventDefault();
+      return;
+    }
+
     // Ziffern 1 bis 5 waehlen die Palette.
     var ziffer = zifferAus(name, ereignis.key);
     if (ziffer >= 1 && ziffer <= 5) {

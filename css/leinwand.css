@@ -59,3 +59,66 @@
   font-size: var(--text-klein);
   color: var(--farbe-text-leise);
 }
+
+/* --- Julia-Vorschau, unten rechts über der Leinwand --- */
+.vorschau {
+  position: absolute;
+  right: var(--abstand-3);
+  bottom: var(--abstand-3);
+  width: 220px;
+  background: rgba(12, 11, 18, 0.88);
+  border: 1px solid var(--farbe-rand-hell);
+  border-radius: var(--radius);
+  box-shadow: var(--schatten);
+  overflow: hidden;
+}
+
+#vorschau-leinwand {
+  display: block;
+  width: 220px;
+  height: 220px;
+  cursor: pointer;
+}
+
+.vorschau-marke {
+  margin: 0;
+  padding: 4px var(--abstand-2) 5px;
+  border-top: 1px solid var(--farbe-rand);
+  font: 11px / 1.3 var(--schrift-fest);
+  color: var(--farbe-text-leise);
+  text-align: center;
+}
+
+/* Das Schild, solange die Julia-Menge selbst die Hauptbühne hat. */
+.julia-schild {
+  position: absolute;
+  right: var(--abstand-3);
+  bottom: var(--abstand-3);
+  display: flex;
+  align-items: center;
+  gap: var(--abstand-3);
+  padding: var(--abstand-2) var(--abstand-3);
+  background: rgba(12, 11, 18, 0.88);
+  border: 1px solid var(--farbe-rand-hell);
+  border-radius: var(--radius);
+  box-shadow: var(--schatten);
+  font-size: var(--text-klein);
+}
+
+.julia-schild b {
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--farbe-akzent);
+}
+
+.julia-schild span {
+  font: var(--text-klein) / 1.3 var(--schrift-fest);
+  color: var(--farbe-text-leise);
+}
+
+/* Schmales Fenster: die Vorschau würde die halbe Leinwand verdecken. */
+@media (max-width: 560px) {
+  .vorschau, #vorschau-leinwand { width: 132px; }
+  #vorschau-leinwand { height: 132px; }
+}

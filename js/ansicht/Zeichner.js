@@ -105,37 +105,20 @@ FRAKTAL.Zeichner = (function () {
       z.ansicht.log2Zoom,
       z.regler.qualitaet * iterFaktor * notbremse
     );
-    var schrittweite = z.skala(g.hoehe);
-    var palette = FRAKTAL.PalettenTextur.aktuell();
 
-    programm.benutzen();
-    gl.uniform2f(programm.ort('u_groesse'), g.breite, g.hoehe);
-    gl.uniform1i(programm.ort('u_iterationen'), iterationen);
-
-    /* Beide Zahlenformate werden gesetzt. Das jeweils andere gibt es im
-     * uebersetzten Shader nicht, `ort` liefert dafuer null - und WebGL
-     * ignoriert Uniforms ohne Platz stillschweigend. Das erspart hier eine
-     * Fallunterscheidung. */
-    gl.uniform2f(programm.ort('u_mitte'), z.ansicht.mitteRe, z.ansicht.mitteIm);
-    gl.uniform1f(programm.ort('u_skala'), schrittweite);
-
-    var mitteRe = FRAKTAL.Zahl.teilen(z.ansicht.mitteRe);
-    var mitteIm = FRAKTAL.Zahl.teilen(z.ansicht.mitteIm);
-    var feinSchritt = FRAKTAL.Zahl.teilen(schrittweite);
-    gl.uniform2f(programm.ort('u_mitteReD'), mitteRe[0], mitteRe[1]);
-    gl.uniform2f(programm.ort('u_mitteImD'), mitteIm[0], mitteIm[1]);
-    gl.uniform2f(programm.ort('u_skalaD'), feinSchritt[0], feinSchritt[1]);
-    gl.uniform1f(programm.ort('u_split'), SPLIT);
-
-    FRAKTAL.PalettenTextur.binden();
-    gl.uniform1i(programm.ort('u_palette'), 0);
-    gl.uniform1f(programm.ort('u_dichte'), z.regler.dichte);
-    gl.uniform1f(programm.ort('u_verschiebung'), z.regler.verschiebung);
-    gl.uniform3f(programm.ort('u_innen'),
-      palette.innen[0] / 255, palette.innen[1] / 255, palette.innen[2] / 255);
-
-    // Kanten glaetten nur im Standbild - in Bewegung sieht es ohnehin niemand.
-    gl.uniform1i(programm.ort('u_proben'), fein ? 2 : 1);
+    bildSetzen(programm, {
+      breite: g.breite,
+      hoehe: g.hoehe,
+      mitteRe: z.ansicht.mitteRe,
+      mitteIm: z.ansicht.mitteIm,
+      skala: z.skala(g.hoehe),
+      iterationen: iterationen,
+      // Kanten glaetten nur im Standbild - in Bewegung sieht es ohnehin niemand.
+      proben: fein ? 2 : 1,
+      julia: z.menge === 'julia',
+      cRe: z.julia.re,
+      cIm: z.julia.im
+    });
 
     FRAKTAL.Leinwand.zeichnen();
 
@@ -144,6 +127,68 @@ FRAKTAL.Zeichner = (function () {
     z.laufzeit.modus = modus;
     z.laufzeit.stellen = FRAKTAL.Genauigkeit.stellen(z.ansicht.log2Zoom, g.hoehe, modus);
     begonnen = jetzt;
+  }
+
+  /* Alle Uniforms fuer ein Bild setzen.
+   *
+   * `o` beschreibt das Bild vollstaendig: Groesse, Ausschnitt, Tiefe,
+   * Unterabtastung und welche Menge. Dadurch setzt derselbe Weg das Hauptbild
+   * und die kleine Julia-Vorschau - die unterscheiden sich nur in diesen
+   * Werten, nicht im Vorgehen. */
+  function bildSetzen(programm, o) {
+    var palette = FRAKTAL.PalettenTextur.aktuell();
+
+    programm.benutzen();
+    gl.uniform2f(programm.ort('u_groesse'), o.breite, o.hoehe);
+    gl.uniform1i(programm.ort('u_iterationen'), o.iterationen);
+
+    /* Beide Zahlenformate werden gesetzt. Das jeweils andere gibt es im
+     * uebersetzten Shader nicht, `ort` liefert dafuer null - und WebGL
+     * ignoriert Uniforms ohne Platz stillschweigend. Das erspart hier eine
+     * Fallunterscheidung. */
+    gl.uniform2f(programm.ort('u_mitte'), o.mitteRe, o.mitteIm);
+    gl.uniform1f(programm.ort('u_skala'), o.skala);
+
+    var mitteRe = FRAKTAL.Zahl.teilen(o.mitteRe);
+    var mitteIm = FRAKTAL.Zahl.teilen(o.mitteIm);
+    var feinSchritt = FRAKTAL.Zahl.teilen(o.skala);
+    gl.uniform2f(programm.ort('u_mitteReD'), mitteRe[0], mitteRe[1]);
+    gl.uniform2f(programm.ort('u_mitteImD'), mitteIm[0], mitteIm[1]);
+    gl.uniform2f(programm.ort('u_skalaD'), feinSchritt[0], feinSchritt[1]);
+    gl.uniform1f(programm.ort('u_split'), SPLIT);
+
+    /* Welche Menge. Das feste c geht in beiden Formaten hinueber - tief in
+     * einer Julia-Menge traegt es die Form des ganzen Bildes, da waeren
+     * sieben Stellen zu wenig. */
+    gl.uniform1i(programm.ort('u_julia'), o.julia ? 1 : 0);
+    gl.uniform2f(programm.ort('u_juliaC'), o.cRe, o.cIm);
+    var juliaRe = FRAKTAL.Zahl.teilen(o.cRe);
+    var juliaIm = FRAKTAL.Zahl.teilen(o.cIm);
+    gl.uniform2f(programm.ort('u_juliaReD'), juliaRe[0], juliaRe[1]);
+    gl.uniform2f(programm.ort('u_juliaImD'), juliaIm[0], juliaIm[1]);
+
+    FRAKTAL.PalettenTextur.binden();
+    gl.uniform1i(programm.ort('u_palette'), 0);
+    gl.uniform1f(programm.ort('u_dichte'), z.regler.dichte);
+    gl.uniform1f(programm.ort('u_verschiebung'), z.regler.verschiebung);
+    gl.uniform3f(programm.ort('u_innen'),
+      palette.innen[0] / 255, palette.innen[1] / 255, palette.innen[2] / 255);
+    gl.uniform1i(programm.ort('u_proben'), o.proben);
+  }
+
+  /* Ein Bild in ein Ziel neben dem Bildschirm zeichnen - die Julia-Vorschau
+   * (js/ui/JuliaVorschau.js) holt sich die Pixel danach von dort.
+   *
+   * Gerechnet wird immer auf dem einfachen Weg: die Vorschau zeigt die ganze
+   * Menge bei Zoom ~1, dort traegt er ein Vielfaches der noetigen Stellen. */
+  function inZiel(ziel, o) {
+    if (!gl || !ziel || !ziel.taugt || !programme.einfach) return false;
+
+    bildSetzen(programme.einfach, o);
+    ziel.binden();
+    FRAKTAL.Leinwand.zeichnen(ziel.breite, ziel.hoehe);
+    ziel.loesen();
+    return true;
   }
 
   /* Wie lange hat das letzte Bild gebraucht?
@@ -170,6 +215,7 @@ FRAKTAL.Zeichner = (function () {
   return {
     starten: starten,
     eingabe: eingabe,
-    schritt: schritt
+    schritt: schritt,
+    inZiel: inZiel
   };
 })();

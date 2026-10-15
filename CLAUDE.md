@@ -12,7 +12,7 @@ Oberfläche ehrlich an – sie wird nicht versteckt.
 
 ## Stand (Oktober 2026)
 
-**Fertig und geprüft: Etappen 1 bis 4.** Als Nächstes steht Etappe 5 an.
+**Fertig und geprüft: Etappen 1 bis 5.** Als Nächstes steht Etappe 6 an.
 
 1. **Gerüst** – WebGL2-Kontext, Vollbild-Dreieck ohne Puffer, Menge in Graustufen.
 2. **Navigation** – Zoom zum Mauszeiger (im Zweierlogarithmus), Ziehen, Kneifen,
@@ -22,8 +22,11 @@ Oberfläche ehrlich an – sie wird nicht versteckt.
    Textur, Regler für Dichte/Farbdrehung/Tiefe, 2×2-Kantenglättung im Standbild.
 4. **Tiefe** – emulierte Doppelgenauigkeit im Shader, automatische Umschaltung,
    Genauigkeitsanzeige. Reicht bis Zoom ~1e11 statt ~1e4.
+5. **Julia** – Vorschau unter dem Mauszeiger, Klick holt die Menge auf die
+   Hauptbühne, `J` wechselt hin und zurück. Beide Mengen haben eine eigene
+   Kamera, die beim Wechseln gemerkt wird.
 
-Offen: **5** Julia-Vorschau · **6** Orte, Lesezeichen, Link, Dauerzoom ·
+Offen: **6** Orte, Lesezeichen, Link, Dauerzoom ·
 **7** PNG-Export, Hilfe, README, Feinschliff · **8** Kopie ins Portfolio.
 Die vollständige Beschreibung aller acht Etappen steht in `FRAKTAL-Plan.md`.
 
@@ -35,6 +38,20 @@ Die vollständige Beschreibung aller acht Etappen steht in `FRAKTAL-Plan.md`.
   unter 1,4, zurück über 2,0), was sich auch der Fenstergröße anpasst: große
   Fenster haben kleinere Pixel und stoßen früher an. Die Schwelle liegt damit
   bei Zoom ~1260.
+- **Die Julia-Vorschau zeichnet in einen eigenen Framebuffer** (`js/gl/Ziel.js`),
+  nicht in eine Ecke der Leinwand, wie der Plan es vorsah. Grund: sie folgt dem
+  Zeiger auch im Stillstand. Läge sie in der Leinwand, müsste für jede
+  Mausbewegung das ganze Fraktal mitgerechnet werden – tief drinnen eine halbe
+  Sekunde je Bild, und das Hauptbild bliebe dauerhaft grob. Derselbe
+  WebGL-Kontext, nur ein anderes Ziel; `readPixels` holt die Pixel in den
+  2D-Canvas der Vorschau.
+- **Julia ist ein Uniform, kein drittes Kompilat.** Mandelbrot und Julia
+  unterscheiden sich nur in den Startwerten vor der Schleife (`u_julia` in
+  `js/shader/fraktal.js`). Ein eigenes `#define` hätte die Zahl der Programme
+  verdoppelt, ohne in der Schleife ein einziges Mal zu sparen – der Schalter ist
+  für alle Pixel gleich.
+- **Zwei Dateien mehr als im Plan:** `js/gl/Ziel.js` (Zeichenziel) und
+  `js/ansicht/Menge.js` (Wechsel samt Kamera-Gedächtnis).
 - **Beim Einfärben wird 1,0 abgezogen** (`js/shader/fraktal.js`). Wegen des
   Fluchtradius 256 beginnt die weiche Iterationszahl nicht bei 0, sondern bei
   etwa 1 – ohne den Abzug startet das weite Außenfeld mitten in der Palette
@@ -84,6 +101,12 @@ Diese drei haben im Projekt schon zugeschlagen:
   Mischt man `performance.now()` und die Bildtakt-Zeit, kann die letzte
   Eingabe für immer als „gerade eben" gelten – das Bild bleibt dann dauerhaft
   grob, ohne dass irgendwo ein Fehler erscheint.
+- **Innen und außen sind an der Farbe nicht immer zu unterscheiden.** Wer ein
+  Bild nachrechnen will, braucht ablesbare Pixel – bei „Feuer" ist die
+  Innenfarbe `[10, 6, 14]` und der Palettenanfang `[8, 4, 18]`, und genau dort
+  liegt das weite Außenfeld. Für solche Prüfungen Graustufen, kleine Dichte,
+  halbe Farbdrehung: dann ist die Menge schwarz und alles andere mindestens
+  mittelgrau. Hat eine Messung schon einmal gekostet.
 - **df64 normalisiert.** Der „tiefe" Teil einer Doppelzahl ist nach jeder
   Rechnung ein kleiner, oft negativer Rest – nicht die Stellen, die man
   hineingesteckt hat. Prüfen lässt sich nur die Summe beider Teile. Zwei
@@ -95,10 +118,10 @@ Diese drei haben im Projekt schon zugeschlagen:
 
 ## Prüfen
 
-In `pruefungen/` liegen fünf Node-Skripte, die ohne Browser laufen und
-zusammen rund 80 Einzelprüfungen machen – Kameramathematik, Maus- und
+In `pruefungen/` liegen sechs Node-Skripte, die ohne Browser laufen und
+zusammen rund 130 Einzelprüfungen machen – Kameramathematik, Maus- und
 Tastatur-Verdrahtung gegen ein Stub-DOM, Grob/Fein-Logik mit gestellter Uhr,
-Palettentextur und die Wahl des Rechenwegs:
+Palettentextur, die Wahl des Rechenwegs und den Wechsel der Menge:
 
 ```
 for f in pruefungen/*.js; do node "$f"; done
@@ -106,10 +129,15 @@ for f in pruefungen/*.js; do node "$f"; done
 
 Nach jeder Änderung laufen lassen. Sie brauchen nichts außer Node.
 
-`pruefungen/df64-nachmessen.html` misst im Browser nach, ob die
-Doppelgenauigkeit auf *dieser* Grafikkarte wirklich greift – einfach
-doppelklicken. Wichtig, weil der Shader-Compiler je nach Treiber anders
-optimiert.
+Zwei Seiten prüfen im Browser nach, was ohne Grafikkarte niemand messen kann –
+einfach doppelklicken:
+
+- `pruefungen/df64-nachmessen.html` misst, ob die Doppelgenauigkeit auf *dieser*
+  Grafikkarte wirklich greift. Wichtig, weil der Shader-Compiler je nach Treiber
+  anders optimiert.
+- `pruefungen/julia-nachrechnen.html` rechnet die Julia-Mengen in JavaScript
+  nach und vergleicht sie Punkt für Punkt mit dem, was die Vorschau zeigt –
+  samt Zeilenordnung des `readPixels`.
 
 **Zum Bilderprüfen:** Der Browser-Pane in Claude Desktop kann kein WebGL, dort
 bleibt die Leinwand leer. Stattdessen kopfloses Chrome mit Software-Rendering:

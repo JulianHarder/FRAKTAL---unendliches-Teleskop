@@ -74,11 +74,14 @@ FRAKTAL.Kamera = (function () {
     z.ziel.mitteIm += anteilY * hoehe;
   }
 
-  /* Zurueck zur Uebersicht. */
+  /* Zurueck zur Uebersicht - zu der der Menge, die gerade gezeigt wird.
+   * Die Mandelbrot-Uebersicht liegt bei -0,6, die Julia-Mengen um den
+   * Ursprung; mit einem festen Punkt landete man in der falschen Menge. */
   function einpassen() {
-    z.ziel.mitteRe = z.anfang.mitteRe;
-    z.ziel.mitteIm = z.anfang.mitteIm;
-    z.ziel.log2Zoom = z.anfang.log2Zoom;
+    var start = z.menge === 'julia' ? z.anfangJulia : z.anfang;
+    z.ziel.mitteRe = start.mitteRe;
+    z.ziel.mitteIm = start.mitteIm;
+    z.ziel.log2Zoom = start.log2Zoom;
   }
 
   /* Ein Schritt der Annaeherung. Gibt true zurueck, solange sich noch etwas

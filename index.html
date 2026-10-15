@@ -27,6 +27,20 @@
   <section class="leinwand-bereich">
     <canvas id="leinwand"></canvas>
 
+    <!-- Julia-Vorschau: folgt dem Zeiger, ein Klick holt sie auf die Bühne -->
+    <div class="vorschau" id="vorschau" hidden>
+      <canvas id="vorschau-leinwand" width="220" height="220"
+              title="Klick: diese Julia-Menge groß zeigen"></canvas>
+      <p class="vorschau-marke" id="vorschau-marke">c = –</p>
+    </div>
+
+    <!-- Statt der Vorschau, solange die Julia-Menge selbst zu sehen ist -->
+    <div class="julia-schild" id="julia-schild" hidden>
+      <b>Julia-Menge</b>
+      <span id="julia-schild-c">c = –</span>
+      <button type="button" id="knopf-mandelbrot">Mandelbrot (J)</button>
+    </div>
+
     <div class="kein-webgl" id="kein-webgl" hidden>
       <h2>Kein WebGL2</h2>
       <p id="kein-webgl-text">
@@ -43,6 +57,7 @@
       <div class="kennzahl"><span>Zoom</span><b class="akzent" id="wert-zoom">–</b></div>
       <div class="kennzahl"><span>Realteil</span><b id="wert-re">–</b></div>
       <div class="kennzahl"><span>Imaginärteil</span><b id="wert-im">–</b></div>
+      <div class="kennzahl" id="zeile-julia" hidden><span>Festes c</span><b class="akzent" id="wert-julia-c">–</b></div>
     </div>
 
     <div class="block">
@@ -68,19 +83,11 @@
       <div class="regler-liste" id="regler-liste"></div>
     </div>
 
+    <!-- Titel und Sätze kommen aus js/daten/texte.js und wechseln mit der
+         Menge, die gerade gezeigt wird. -->
     <div class="block">
-      <h2>Mandelbrot-Menge</h2>
-      <p class="hinweis">
-        Jedes Pixel ist eine Zahl <i>c</i>. Gefragt wird, ob die Folge
-        <i>z</i> → <i>z</i>² + <i>c</i> beschränkt bleibt. Bleibt sie es,
-        gehört <i>c</i> zur Menge – das ist das Schwarze. Draußen zeigt die
-        Helligkeit, wie schnell die Folge entkommen ist.
-      </p>
-      <p class="hinweis">
-        Beim Zoomen wird kurz grob gerechnet, im Stillstand dann scharf.
-        Die Iterationstiefe wächst mit – sonst würde tief drinnen alles
-        schwarz.
-      </p>
+      <h2 id="erklaerung-titel">Mandelbrot-Menge</h2>
+      <div id="erklaerung"></div>
     </div>
   </aside>
 </main>
@@ -94,6 +101,8 @@
   <span><kbd>0</kbd> – Übersicht</span>
   <span><kbd>1</kbd>…<kbd>5</kbd> – Palette</span>
   <span><kbd>G</kbd> – Rechenweg</span>
+  <span><kbd>Klick</kbd> auf die Vorschau – Julia groß</span>
+  <span><kbd>J</kbd> – Julia und zurück</span>
 </footer>
 
 <!-- Skripte: klassische Tags in fester Reihenfolge, kein type="module".
@@ -103,6 +112,7 @@
 
 <!-- Daten (zuerst, alle anderen lesen daraus) -->
 <script src="js/daten/paletten.js"></script>
+<script src="js/daten/texte.js"></script>
 
 <!-- Kern -->
 <script src="js/kern/Zustand.js"></script>
@@ -119,9 +129,11 @@
 <script src="js/gl/Programm.js"></script>
 <script src="js/gl/Leinwand.js"></script>
 <script src="js/gl/PalettenTextur.js"></script>
+<script src="js/gl/Ziel.js"></script>
 
 <!-- Ansicht -->
 <script src="js/ansicht/Kamera.js"></script>
+<script src="js/ansicht/Menge.js"></script>
 <script src="js/ansicht/Iterationen.js"></script>
 <script src="js/ansicht/Genauigkeit.js"></script>
 <script src="js/ansicht/Zeichner.js"></script>
@@ -130,6 +142,7 @@
 <script src="js/ui/Seitenleiste.js"></script>
 <script src="js/ui/Farbwahl.js"></script>
 <script src="js/ui/Rechenmodus.js"></script>
+<script src="js/ui/JuliaVorschau.js"></script>
 <script src="js/ui/Maus.js"></script>
 <script src="js/ui/Tastatur.js"></script>
 

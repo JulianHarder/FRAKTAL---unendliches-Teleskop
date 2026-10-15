@@ -46,10 +46,14 @@ FRAKTAL.Leinwand = (function () {
     return true;
   }
 
-  /* Das Vollbild-Dreieck zeichnen. Drei Eckpunkte, kein Puffer. */
-  function zeichnen() {
+  /* Das Vollbild-Dreieck zeichnen. Drei Eckpunkte, kein Puffer.
+   *
+   * Ohne Argumente gilt die Leinwand. Die beiden Masse gibt nur an, wer in
+   * ein anderes Ziel zeichnet - die Julia-Vorschau in ihren eigenen
+   * Framebuffer (js/gl/Ziel.js), der eine andere Groesse hat als das Fenster. */
+  function zeichnen(inBreite, inHoehe) {
     gl.bindVertexArray(vao);
-    gl.viewport(0, 0, breite, hoehe);
+    gl.viewport(0, 0, inBreite || breite, inHoehe || hoehe);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 

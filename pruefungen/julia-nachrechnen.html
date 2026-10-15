@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FRAKTAL – Julia nachrechnen</title>
+<link rel="stylesheet" href="../css/variablen.css">
+<link rel="stylesheet" href="../css/grundlage.css">
+<link rel="stylesheet" href="../css/leinwand.css">
+<style>
+  body { display: block; height: auto; overflow: auto; padding: 28px; }
+  h1 { font-size: 19px; letter-spacing: 1.5px; margin: 0 0 4px; }
+  p.unter { margin: 0 0 24px; color: var(--farbe-text-leise); max-width: 74ch; }
+  table { border-collapse: collapse; margin: 18px 0; }
+  th, td { padding: 5px 14px 5px 0; text-align: left; vertical-align: top; }
+  th { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase;
+       color: var(--farbe-text-still); border-bottom: 1px solid var(--farbe-rand); }
+  td.zahl { font-family: var(--schrift-fest); color: var(--farbe-text-leise); }
+  .gut { color: var(--farbe-gut); }
+  .schlecht { color: var(--farbe-warnung); }
+  .urteil { margin-top: 20px; padding: 14px 16px; border-radius: var(--radius);
+            background: var(--farbe-flaeche); border: 1px solid var(--farbe-rand);
+            max-width: 74ch; }
+  .urteil b { display: block; margin-bottom: 6px; font-size: 16px; }
+  /* Die Leinwand und die Vorschau arbeiten hier nur, sie werden nicht gezeigt. */
+  .buehne { position: absolute; left: -9999px; top: 0; width: 320px; height: 240px; }
+</style>
+</head>
+<body>
+
+<h1>Rechnet die Julia-Seite richtig?</h1>
+<p class="unter">
+  Diese Seite prüft, was nur eine echte Grafikkarte zeigen kann: ob beide
+  Shader mit dem Julia-Schalter noch übersetzen, ob die Julia-Mengen stimmen
+  (nachgerechnet in JavaScript, Punkt für Punkt) und ob die Vorschau den Weg
+  über den eigenen Framebuffer richtig geht – samt der Zeilenordnung, die
+  <code>readPixels</code> von unten liefert. Letzteres fällt dem Auge nicht
+  auf: viele Julia-Mengen sind punktsymmetrisch und sehen gespiegelt
+  plausibel aus.
+</p>
+
+<!-- Arbeitsbühne: dieselben Bausteine wie in index.html, nur beiseite geschoben -->
+<div class="buehne leinwand-bereich">
+  <canvas id="leinwand"></canvas>
+  <div class="vorschau" id="vorschau" hidden>
+    <canvas id="vorschau-leinwand" width="220" height="220"></canvas>
+    <p class="vorschau-marke" id="vorschau-marke">c = –</p>
+  </div>
+  <div class="julia-schild" id="julia-schild" hidden>
+    <b>Julia-Menge</b><span id="julia-schild-c">c = –</span>
+    <button type="button" id="knopf-mandelbrot">Mandelbrot (J)</button>
+  </div>
+</div>
+
+<div id="ausgabe">läuft …</div>
+
+<script src="../js/daten/paletten.js"></script>
+<script src="../js/daten/texte.js"></script>
+<script src="../js/kern/Zustand.js"></script>
+<script src="../js/kern/Zahl.js"></script>
+<script src="../js/shader/vertex.js"></script>
+<script src="../js/shader/bausteine.js"></script>
+<script src="../js/shader/fraktal.js"></script>
+<script src="../js/gl/Kontext.js"></script>
+<script src="../js/gl/Programm.js"></script>
+<script src="../js/gl/Leinwand.js"></script>
+<script src="../js/gl/PalettenTextur.js"></script>
+<script src="../js/gl/Ziel.js"></script>
+<script src="../js/ansicht/Kamera.js"></script>
+<script src="../js/ansicht/Menge.js"></script>
+<script src="../js/ansicht/Iterationen.js"></script>
+<script src="../js/ansicht/Genauigkeit.js"></script>
+<script src="../js/ansicht/Zeichner.js"></script>
+<script src="../js/ui/JuliaVorschau.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* Muss mit js/ui/JuliaVorschau.js uebereinstimmen - die Vorschau haelt
+   * ihren Ausschnitt und ihre Tiefe fuer sich, nachrechnen laesst sich das
+   * nur mit denselben Werten. */
+  var VORSCHAU_HOEHE = 3.6;
+  var VORSCHAU_ITER = 280;
+
+  var GRENZE = 65536.0;        // Fluchtradius 256, im Quadrat (wie im Shader)
+  var KANTE = 64;              // Pruefbilder: 64 x 64 Pixel
+
+  var zeilen = [];
+  var fehler = 0;
+
+  function pruefe(name, ok, zusatz) {
+    zeilen.push({ name: name, ok: !!ok, zusatz: zusatz || '' });
+    if (!ok) fehler++;
+  }
+
+  var leinwand = document.getElementById('leinwand');
+  var gl = FRAKTAL.Kontext.erzeugen(leinwand);
+  if (!gl) {
+    melden('Kein WebGL2 – hier lässt sich nichts nachrechnen.');
+    return;
+  }
+
+  leinwand.width = KANTE;
+  leinwand.height = KANTE;
+  FRAKTAL.Leinwand.starten(gl, leinwand);
+  FRAKTAL.PalettenTextur.starten(gl);
+  FRAKTAL.PalettenTextur.waehlen('feuer');
+
+  // --- Beide Fassungen uebersetzen ---
+  var einfach = null;
+  var doppelt = null;
+  try {
+    einfach = FRAKTAL.Programm.bauen(gl, FRAKTAL.Shader.vertex, FRAKTAL.Shader.fraktal(false));
+  } catch (f) { console.error(f.message); }
+  pruefe('Der einfache Shader übersetzt mit dem Julia-Schalter', !!einfach);
+
+  try {
+    doppelt = FRAKTAL.Programm.bauen(gl, FRAKTAL.Shader.vertex, FRAKTAL.Shader.fraktal(true));
+  } catch (f) { console.error(f.message); }
+  pruefe('Der doppelt genaue Shader übersetzt mit dem Julia-Schalter', !!doppelt);
+
+  if (!einfach) { melden('Ohne übersetzten Shader geht nichts weiter.'); return; }
+
+  /* Ein Pruefbild zeichnen und zurueckholen. Die Uniforms werden hier von
+   * Hand gesetzt, nicht ueber den Zeichner - geprueft wird der Shader. */
+  var ROT = [255, 0, 0];
+  function malen(programm, o) {
+    programm.benutzen();
+    gl.uniform2f(programm.ort('u_groesse'), KANTE, KANTE);
+    gl.uniform1i(programm.ort('u_iterationen'), o.iterationen || 400);
+    gl.uniform2f(programm.ort('u_mitte'), o.mitteRe, o.mitteIm);
+    gl.uniform1f(programm.ort('u_skala'), o.skala);
+
+    var mRe = FRAKTAL.Zahl.teilen(o.mitteRe);
+    var mIm = FRAKTAL.Zahl.teilen(o.mitteIm);
+    var sk = FRAKTAL.Zahl.teilen(o.skala);
+    var jRe = FRAKTAL.Zahl.teilen(o.cRe || 0);
+    var jIm = FRAKTAL.Zahl.teilen(o.cIm || 0);
+    gl.uniform2f(programm.ort('u_mitteReD'), mRe[0], mRe[1]);
+    gl.uniform2f(programm.ort('u_mitteImD'), mIm[0], mIm[1]);
+    gl.uniform2f(programm.ort('u_skalaD'), sk[0], sk[1]);
+    gl.uniform2f(programm.ort('u_juliaReD'), jRe[0], jRe[1]);
+    gl.uniform2f(programm.ort('u_juliaImD'), jIm[0], jIm[1]);
+    gl.uniform1f(programm.ort('u_split'), 4097.0);
+
+    gl.uniform1i(programm.ort('u_julia'), o.julia ? 1 : 0);
+    gl.uniform2f(programm.ort('u_juliaC'), o.cRe || 0, o.cIm || 0);
+
+    FRAKTAL.PalettenTextur.binden();
+    gl.uniform1i(programm.ort('u_palette'), 0);
+    gl.uniform1f(programm.ort('u_dichte'), 0.45);
+    gl.uniform1f(programm.ort('u_verschiebung'), 0.0);
+    // Rot als Innenfarbe: so ist "gehoert zur Menge" an einem Pixel ablesbar.
+    gl.uniform3f(programm.ort('u_innen'), 1.0, 0.0, 0.0);
+    gl.uniform1i(programm.ort('u_proben'), 1);
+
+    FRAKTAL.Leinwand.zeichnen(KANTE, KANTE);
+    var pixel = new Uint8Array(KANTE * KANTE * 4);
+    gl.readPixels(0, 0, KANTE, KANTE, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+    return pixel;
+  }
+
+  // Zeile py zaehlt von unten - so liefert readPixels die Daten.
+  function innen(pixel, px, py) {
+    var i = (py * KANTE + px) * 4;
+    return Math.abs(pixel[i] - ROT[0]) < 12
+        && Math.abs(pixel[i + 1] - ROT[1]) < 12
+        && Math.abs(pixel[i + 2] - ROT[2]) < 12;
+  }
+
+  // Ausschnitt [-2, 2]: ein Pixel ist 4/64 breit.
+  var SKALA = 4 / KANTE;
+
+  // --- Die Mandelbrot-Menge muss bleiben, was sie war ---
+  var mandel = malen(einfach, { mitteRe: 0, mitteIm: 0, skala: SKALA, julia: false });
+  pruefe('Mandelbrot: −0,47 + 0,03i liegt in der Menge', innen(mandel, 24, 32));
+  pruefe('Mandelbrot: 1,53 + 1,53i liegt draußen', !innen(mandel, 56, 56));
+
+  /* --- Julia mit c = 0 --- Das ist der eine Fall, den man ohne Rechnung
+     weiss: z -> z^2 bleibt genau dann beschraenkt, wenn |z| <= 1. Die Menge
+     ist also die Einheitskreisscheibe. Trifft der Shader das, stimmen
+     Startwert und festes c. */
+  var kreis = malen(einfach, { mitteRe: 0, mitteIm: 0, skala: SKALA,
+                               julia: true, cRe: 0, cIm: 0 });
+  pruefe('Julia c = 0: 0,53 + 0,03i liegt innen (|z| < 1)', innen(kreis, 40, 32));
+  pruefe('Julia c = 0: 1,53 + 0,03i liegt draußen (|z| > 1)', !innen(kreis, 56, 32));
+  pruefe('Julia c = 0: −0,53 − 0,47i liegt innen', innen(kreis, 24, 24));
+
+  if (doppelt) {
+    var kreisD = malen(doppelt, { mitteRe: 0, mitteIm: 0, skala: SKALA,
+                                  julia: true, cRe: 0, cIm: 0 });
+    pruefe('Doppelt genau: dieselbe Kreisscheibe',
+      innen(kreisD, 40, 32) && !innen(kreisD, 56, 32) && innen(kreisD, 24, 24));
+    var mandelD = malen(doppelt, { mitteRe: 0, mitteIm: 0, skala: SKALA, julia: false });
+    pruefe('Doppelt genau: die Mandelbrot-Menge bleibt sie selbst',
+      innen(mandelD, 24, 32) && !innen(mandelD, 56, 56));
+  }
+
+  // --- Der Schalter muss wirklich etwas aendern ---
+  var julia = malen(einfach, { mitteRe: 0, mitteIm: 0, skala: SKALA,
+                               julia: true, cRe: -0.4, cIm: 0.6 });
+  var anders = 0;
+  for (var i = 0; i < mandel.length; i += 4) {
+    if (Math.abs(mandel[i] - julia[i]) > 24) anders++;
+  }
+  var anteil = anders / (KANTE * KANTE);
+  pruefe('Der Schalter ändert das Bild wirklich', anteil > 0.2,
+    Math.round(anteil * 100) + ' % der Pixel anders');
+
+  // --- Der Weg der Vorschau, von der Grafikkarte bis in den 2D-Canvas ---
+  FRAKTAL.Zeichner.starten(gl, { einfach: einfach, doppelt: doppelt });
+
+  var ziel = FRAKTAL.Ziel.erzeugen(gl, 32, 32);
+  pruefe('Das Zeichenziel neben dem Bildschirm taugt', ziel.taugt);
+  ziel.loeschen();
+
+  /* Fuer das Nachrechnen muessen Palette und Regler so stehen, dass "gehoert
+   * zur Menge" am Pixel ablesbar ist. Mit "Feuer" ist es das nicht: ihre
+   * Innenfarbe [10, 6, 14] und ihr Palettenanfang [8, 4, 18] sind praktisch
+   * dasselbe Schwarz, und das weite Aussenfeld liegt genau dort. Also
+   * Graustufen, kleine Dichte, halbe Drehung - dann ist die Menge schwarz
+   * und alles andere mindestens mittelgrau. */
+  FRAKTAL.PalettenTextur.waehlen('graustufen');
+  FRAKTAL.Zustand.regler.dichte = 0.02;
+  FRAKTAL.Zustand.regler.verschiebung = 0.5;
+
+  FRAKTAL.JuliaVorschau.starten(gl);
+  // Der Zeiger steht genau in der Mitte: dort liegt c = Bildmitte.
+  FRAKTAL.Zustand.ansicht.mitteRe = 0.3;
+  FRAKTAL.Zustand.ansicht.mitteIm = 0.5;
+  FRAKTAL.Zustand.ansicht.log2Zoom = 0;
+  FRAKTAL.JuliaVorschau.zeigen(160, 120, { width: 320, height: 240 });
+  var lief = FRAKTAL.JuliaVorschau.schritt(true);
+  pruefe('Die Vorschau rechnet ein Bild', lief === true);
+
+  /* Jetzt wird das Vorschaubild gegen JavaScript nachgerechnet. c = 0,3 + 0,5i
+   * ist dafuer absichtlich gewaehlt: diese Julia-Menge ist zu keiner Achse
+   * symmetrisch. Waere beim Kopieren das Spiegeln vergessen, muesste die
+   * Uebereinstimmung einbrechen. */
+  var vorschau = document.getElementById('vorschau-leinwand');
+  var daten = vorschau.getContext('2d')
+    .getImageData(0, 0, vorschau.width, vorschau.height).data;
+  var kante = vorschau.width;
+  var schrittweite = VORSCHAU_HOEHE / kante;
+
+  var treffer = 0, geprueft = 0, innenGezaehlt = 0;
+  for (var py = 1; py < kante; py += 3) {
+    for (var px = 1; px < kante; px += 3) {
+      // Zeile 0 ist im 2D-Canvas oben, also der groesste Imaginaerteil.
+      var zRe = (px + 0.5 - kante / 2) * schrittweite;
+      var zIm = (kante / 2 - py - 0.5) * schrittweite;
+
+      var soll = beschraenkt(zRe, zIm, 0.3, 0.5);
+      var i = (py * kante + px) * 4;
+      var ist = istInnen(daten, i);
+
+      geprueft++;
+      if (soll === ist) treffer++;
+      if (soll) innenGezaehlt++;
+    }
+  }
+  var quote = treffer / geprueft;
+  pruefe('Die Vorschau zeigt die nachgerechnete Julia-Menge', quote > 0.93,
+    Math.round(quote * 1000) / 10 + ' % von ' + geprueft + ' Punkten');
+  pruefe('Das Vorschaubild hat überhaupt ein Innen und ein Außen',
+    innenGezaehlt > geprueft * 0.05 && innenGezaehlt < geprueft * 0.95,
+    innenGezaehlt + ' von ' + geprueft + ' innen');
+
+  /* Gegenprobe zum Spiegeln: dasselbe Bild senkrecht gekippt darf NICHT
+   * passen, sonst wuerde die Pruefung oben ein vergessenes Spiegeln gar nicht
+   * merken. Gezaehlt wird nur ueber die Punkte, die zur Menge gehoeren - das
+   * weite Aussenfeld stimmt auch gekippt ueberein und wuerde jeden
+   * Unterschied unter sich begraben. */
+  var gekippt = 0;
+  for (var qy = 1; qy < kante; qy += 3) {
+    for (var qx = 1; qx < kante; qx += 3) {
+      var kRe = (qx + 0.5 - kante / 2) * schrittweite;
+      var kIm = (kante / 2 - qy - 0.5) * schrittweite;
+      if (!beschraenkt(kRe, kIm, 0.3, 0.5)) continue;
+
+      var j = ((kante - 1 - qy) * kante + qx) * 4;
+      if (istInnen(daten, j)) gekippt++;
+    }
+  }
+  pruefe('Senkrecht gekippt passt es nicht – die Prüfung merkt das Spiegeln',
+    gekippt / innenGezaehlt < 0.5,
+    'gekippt nur ' + Math.round(gekippt / innenGezaehlt * 1000) / 10
+      + ' % der ' + innenGezaehlt + ' Punkte innen');
+
+  /* Schwarz heisst "gehoert zur Menge" - siehe die Reglerwahl oben. */
+  function istInnen(daten, i) {
+    return daten[i] < 40 && daten[i + 1] < 40 && daten[i + 2] < 40;
+  }
+
+  /* z -> z^2 + c in JavaScript, mit derselben Grenze und derselben Tiefe wie
+   * der Shader. Nur so sind die Ergebnisse vergleichbar. */
+  function beschraenkt(zRe, zIm, cRe, cIm) {
+    for (var i = 0; i < VORSCHAU_ITER; i++) {
+      var re = zRe * zRe - zIm * zIm + cRe;
+      var im = 2 * zRe * zIm + cIm;
+      zRe = re;
+      zIm = im;
+      if (zRe * zRe + zIm * zIm > GRENZE) return false;
+    }
+    return true;
+  }
+
+  // --- Der Wechsel der Menge, mit echtem DOM ---
+  FRAKTAL.Menge.horchen(function () { FRAKTAL.JuliaVorschau.mengeGewechselt(); });
+  FRAKTAL.Menge.nachJulia(-0.8, 0.156);
+  pruefe('In der Julia-Menge weicht die Vorschau dem Schild',
+    document.getElementById('vorschau').hidden === true
+    && document.getElementById('julia-schild').hidden === false);
+  pruefe('Das Schild nennt das feste c',
+    document.getElementById('julia-schild-c').textContent.indexOf('0,8') > 0,
+    document.getElementById('julia-schild-c').textContent);
+  pruefe('In der Julia-Menge rechnet die Vorschau nicht mit',
+    FRAKTAL.JuliaVorschau.schritt(true) === false);
+
+  FRAKTAL.Menge.nachMandelbrot();
+  pruefe('Zurück ist die Vorschau wieder da',
+    document.getElementById('vorschau').hidden === false
+    && document.getElementById('julia-schild').hidden === true);
+
+  melden();
+
+  // --- Ausgabe ---
+  function melden(text) {
+    var html = '';
+    if (text) html += '<p class="schlecht">' + text + '</p>';
+
+    if (zeilen.length) {
+      html += '<table><tr><th>Prüfung</th><th>Ergebnis</th><th>Messung</th></tr>';
+      zeilen.forEach(function (zeile) {
+        html += '<tr><td>' + zeile.name + '</td>'
+          + '<td class="' + (zeile.ok ? 'gut">OK' : 'schlecht">FEHL') + '</td>'
+          + '<td class="zahl">' + zeile.zusatz + '</td></tr>';
+      });
+      html += '</table>';
+    }
+
+    var urteil = fehler === 0 && zeilen.length
+      ? '<b class="gut">ALLE BESTANDEN</b>Die Julia-Seite rechnet auf dieser '
+        + 'Grafikkarte richtig – Shader, Framebuffer und Zeilenordnung.'
+      : '<b class="schlecht">' + (fehler || '?') + ' FEHLER</b>Die Einzelheiten '
+        + 'stehen in der Tabelle, Shader-Meldungen in der Konsole.';
+    html += '<div class="urteil">' + urteil + '</div>';
+
+    document.getElementById('ausgabe').innerHTML = html;
+    document.title = (fehler === 0 ? 'ALLE BESTANDEN' : fehler + ' FEHLER')
+      + ' – Julia nachrechnen';
+  }
+})();
+</script>
+</body>
+</html>

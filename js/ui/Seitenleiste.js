@@ -24,6 +24,27 @@ FRAKTAL.Seitenleiste = (function () {
     felder.balken = document.getElementById('balken-stellen');
     felder.balkenRahmen = document.getElementById('balken-rahmen');
     felder.stellen = document.getElementById('text-stellen');
+    felder.zeileJulia = document.getElementById('zeile-julia');
+    felder.juliaC = document.getElementById('wert-julia-c');
+    felder.erklaerungTitel = document.getElementById('erklaerung-titel');
+    felder.erklaerung = document.getElementById('erklaerung');
+  }
+
+  /* Die Erklaerung wechselt mit der Menge auf der Hauptbuehne. Die Saetze
+   * selbst stehen in js/daten/texte.js, nicht hier. */
+  function erklaerung(menge) {
+    if (!felder.erklaerung) return;
+
+    var text = FRAKTAL.Texte.erklaerung[menge] || FRAKTAL.Texte.erklaerung.mandelbrot;
+    felder.erklaerungTitel.textContent = text.titel;
+    felder.erklaerung.innerHTML = '';
+
+    text.saetze.forEach(function (satz) {
+      var absatz = document.createElement('p');
+      absatz.className = 'hinweis';
+      absatz.textContent = satz;
+      felder.erklaerung.appendChild(absatz);
+    });
   }
 
   function aktualisieren(z) {
@@ -32,6 +53,14 @@ FRAKTAL.Seitenleiste = (function () {
     felder.zoom.textContent = zoomText(z.zoom());
     felder.re.textContent = koordinate(z.ansicht.mitteRe);
     felder.im.textContent = koordinate(z.ansicht.mitteIm);
+
+    // Das feste c gibt es nur in der Julia-Menge.
+    if (felder.zeileJulia) {
+      felder.zeileJulia.hidden = z.menge !== 'julia';
+      if (z.menge === 'julia') {
+        felder.juliaC.textContent = juliaText(z.julia.re, z.julia.im);
+      }
+    }
 
     felder.iterationen.textContent = l.iterationen.toLocaleString('de-DE')
       + (l.grob ? ' (grob)' : '');
@@ -76,6 +105,14 @@ FRAKTAL.Seitenleiste = (function () {
     return wert.toFixed(1).replace('.', ',');
   }
 
+  /* Das feste c der Julia-Menge. Sechs Stellen genuegen - anders als die
+   * Bildmitte wird es nicht hineingezoomt. */
+  function juliaText(re, im) {
+    return re.toFixed(6).replace('.', ',')
+      + (im < 0 ? ' − ' : ' + ')
+      + Math.abs(im).toFixed(6).replace('.', ',') + 'i';
+  }
+
   function grafikkarte(name) {
     if (felder.karte) felder.karte.textContent = name;
   }
@@ -101,6 +138,7 @@ FRAKTAL.Seitenleiste = (function () {
   return {
     starten: starten,
     aktualisieren: aktualisieren,
+    erklaerung: erklaerung,
     grafikkarte: grafikkarte
   };
 })();
