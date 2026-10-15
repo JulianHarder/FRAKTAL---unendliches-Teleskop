@@ -257,4 +257,8 @@ mitschreiben.
 
 ## Arbeitsweise
 - Git: eigenes Repo. Commits auf Zuruf, Push nur wenn Julian „push" sagt.
+- **Gepusht wird über SSH.** `origin` zeigt auf die HTTPS-Adresse, und dafür
+  ist keine Anmeldung hinterlegt – `git push origin main` scheitert mit
+  „could not read Username". Der SSH-Schlüssel liegt dagegen bereit:
+  `git push git@github.com:JulianHarder/FRAKTAL---unendliches-Teleskop.git main`
 - Nach jeder Etappe: kurz durchklicken, Screenshot in `screenshots/`.
