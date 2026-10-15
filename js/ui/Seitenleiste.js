@@ -24,18 +24,18 @@ FRAKTAL.Seitenleiste = (function () {
     felder.balken = document.getElementById('balken-stellen');
     felder.balkenRahmen = document.getElementById('balken-rahmen');
     felder.stellen = document.getElementById('text-stellen');
-    felder.zeileJulia = document.getElementById('zeile-julia');
-    felder.juliaC = document.getElementById('wert-julia-c');
+    felder.grenze = document.getElementById('grenze');
+    felder.bits = document.getElementById('hinweis-bits');
     felder.erklaerungTitel = document.getElementById('erklaerung-titel');
     felder.erklaerung = document.getElementById('erklaerung');
   }
 
-  /* Die Erklaerung wechselt mit der Menge auf der Hauptbuehne. Die Saetze
-   * selbst stehen in js/daten/texte.js, nicht hier. */
-  function erklaerung(menge) {
+  /* Die Erklaerung in der Seitenleiste. Die Saetze stehen in
+   * js/daten/texte.js, nicht hier. */
+  function erklaerung() {
     if (!felder.erklaerung) return;
 
-    var text = FRAKTAL.Texte.erklaerung[menge] || FRAKTAL.Texte.erklaerung.mandelbrot;
+    var text = FRAKTAL.Texte.erklaerung.mandelbrot;
     felder.erklaerungTitel.textContent = text.titel;
     felder.erklaerung.innerHTML = '';
 
@@ -54,14 +54,6 @@ FRAKTAL.Seitenleiste = (function () {
     felder.re.textContent = koordinate(z.ansicht.mitteRe);
     felder.im.textContent = koordinate(z.ansicht.mitteIm);
 
-    // Das feste c gibt es nur in der Julia-Menge.
-    if (felder.zeileJulia) {
-      felder.zeileJulia.hidden = z.menge !== 'julia';
-      if (z.menge === 'julia') {
-        felder.juliaC.textContent = juliaText(z.julia.re, z.julia.im);
-      }
-    }
-
     felder.iterationen.textContent = l.iterationen.toLocaleString('de-DE')
       + (l.grob ? ' (grob)' : '');
     felder.dauer.textContent = Math.round(l.letzteDauer) + ' ms';
@@ -73,11 +65,14 @@ FRAKTAL.Seitenleiste = (function () {
 
     genauigkeitZeigen(l);
 
-    felder.drosselung.hidden = l.notbremse >= 0.99;
+    /* Beide Stufen der Notbremse gehoeren gesagt. Wer nicht weiss, dass
+     * gespart wird, haelt das Bild fuer das, was die Stelle hergibt. */
+    felder.drosselung.hidden = l.notbremse >= 0.99 && l.glaetten;
     if (!felder.drosselung.hidden) {
-      felder.drosselung.textContent = 'Gedrosselt auf '
-        + Math.round(l.notbremse * 100)
-        + ' % der Tiefe – die Bilder haben zu lange gebraucht.';
+      felder.drosselung.textContent = l.notbremse >= 0.99
+        ? 'Ohne Kantenglättung – die Bilder haben zu lange gebraucht.'
+        : 'Gedrosselt auf ' + Math.round(l.notbremse * 100)
+          + ' % der Tiefe, ohne Kantenglättung – die Bilder haben zu lange gebraucht.';
     }
   }
 
@@ -96,21 +91,40 @@ FRAKTAL.Seitenleiste = (function () {
     felder.balkenRahmen.classList.toggle('knapp', knapp);
     felder.stellen.classList.toggle('knapp', knapp);
 
+    /* Dieselbe Nachricht noch einmal über der Leinwand.
+     *
+     * In der Seitenleiste steht sie weit unten, und wer gerade zoomt, sieht
+     * dorthin nicht - er sieht die Klötzchen und hält sie für einen Fehler
+     * des Programms. Die Grenze gehört dahin, wo man sie bemerkt. */
+    if (felder.grenze) felder.grenze.hidden = !knapp;
+
     felder.stellen.textContent = knapp
       ? 'Grenze erreicht – tiefer wird das Bild stufig, nicht detaillierter.'
       : zahl(l.stellen) + ' Stellen übrig';
   }
 
-  function zahl(wert) {
-    return wert.toFixed(1).replace('.', ',');
+  /* Einmal beim Start: was die Messung auf dieser Grafikkarte ergeben hat.
+   * Steht da nichts, liess sie sich nicht messen - dann gilt die Annahme. */
+  function genauigkeitGemessen(bits) {
+    if (!felder.bits) return;
+
+    if (!bits) {
+      felder.bits.hidden = true;
+      return;
+    }
+
+    felder.bits.hidden = false;
+    var voll = bits >= 44;
+    felder.bits.classList.toggle('knapp', !voll);
+    felder.bits.textContent = voll
+      ? 'Nachgemessen: ' + bits + ' Bit – die Doppelgenauigkeit greift auf dieser Karte.'
+      : 'Nachgemessen: nur ' + bits + ' von 46 Bit. Diese Grafikkarte rechnet die '
+        + 'Doppelgenauigkeit nur zum Teil – tief drinnen wird das Bild früher stufig, '
+        + 'und die Stellenanzeige daneben weiß das.';
   }
 
-  /* Das feste c der Julia-Menge. Sechs Stellen genuegen - anders als die
-   * Bildmitte wird es nicht hineingezoomt. */
-  function juliaText(re, im) {
-    return re.toFixed(6).replace('.', ',')
-      + (im < 0 ? ' − ' : ' + ')
-      + Math.abs(im).toFixed(6).replace('.', ',') + 'i';
+  function zahl(wert) {
+    return wert.toFixed(1).replace('.', ',');
   }
 
   function grafikkarte(name) {
@@ -139,6 +153,7 @@ FRAKTAL.Seitenleiste = (function () {
     starten: starten,
     aktualisieren: aktualisieren,
     erklaerung: erklaerung,
+    genauigkeitGemessen: genauigkeitGemessen,
     grafikkarte: grafikkarte
   };
 })();

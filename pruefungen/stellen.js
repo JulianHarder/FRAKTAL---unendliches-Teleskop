@@ -1,6 +1,6 @@
 // Prueft, was zum Merken und Anfahren von Stellen gehoert: den Flug der
-// Kamera, die Adresse hinter dem Doppelkreuz, den Speicher samt vollem
-// localStorage und den Dauerzoom an der Genauigkeitsgrenze.
+// Kamera, die Adresse hinter dem Doppelkreuz und den Speicher samt vollem
+// localStorage.
 const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
@@ -36,12 +36,11 @@ vm.createContext(kontext);
 for (const d of ['daten/paletten.js', 'daten/orte.js', 'kern/Zustand.js', 'kern/Zahl.js',
                  'kern/Speicher.js', 'kern/Adresse.js', 'ansicht/Kamera.js',
                  'ansicht/Iterationen.js', 'ansicht/Genauigkeit.js',
-                 'ansicht/Dauerzoom.js', 'ui/Tastatur.js']) {
+                 'ui/Tastatur.js']) {
   vm.runInContext(fs.readFileSync(ordner + d, 'utf8'), kontext, { filename: d });
 }
 
 const F = kontext.FRAKTAL, z = F.Zustand, K = F.Kamera;
-// Der Dauerzoom fragt nach der vollen Bildhoehe - hier eine feste.
 F.Leinwand = { volleHoehe: () => 900 };
 
 let fehler = 0;
@@ -154,18 +153,6 @@ pruefe('Die Palette kommt zurueck', z.regler.palette === 'eis');
 pruefe('Eine aufgerufene Adresse steht sofort da, ohne Hinflug',
   z.ziel.mitteRe === z.ansicht.mitteRe && z.ziel.log2Zoom === z.ansicht.log2Zoom);
 
-// Eine Julia-Stelle bringt ihr festes c mit.
-z.menge = 'julia';
-z.julia.re = -0.8;
-z.julia.im = 0.156;
-const juliaAdresse = F.Adresse.alsText();
-z.menge = 'mandelbrot';
-z.julia.re = 0;
-z.julia.im = 0;
-F.Adresse.lesen(juliaAdresse.split('#')[1]);
-pruefe('Ein Link in eine Julia-Menge bringt sie samt c zurueck',
-  z.menge === 'julia' && nah(z.julia.re, -0.8) && nah(z.julia.im, 0.156));
-
 // Unsinn darf die Seite nicht ins Nichts schicken.
 pruefe('Eine leere Adresse wird abgewiesen', F.Adresse.lesen('') === false);
 pruefe('Kaputte Zahlen werden abgewiesen',
@@ -182,7 +169,6 @@ pruefe('Eine unbekannte Palette aendert nichts',
 F.Speicher.laden();
 aufsetzen(-1.25, 0.05, 7.5);
 z.regler.dichte = 0.9;
-z.menge = 'mandelbrot';
 F.Speicher.standMerken(z);
 
 aufsetzen(0, 0, 0);
@@ -192,6 +178,15 @@ F.Speicher.standAnwenden(z);
 pruefe('Der Stand ueberlebt das Neuladen',
   nah(z.ansicht.mitteRe, -1.25) && nah(z.ansicht.log2Zoom, 7.5));
 pruefe('Die Regler ueberleben mit', nah(z.regler.dichte, 0.9));
+
+// Der Rechenweg mit Absicht nicht: einmal auf "einfach" gestellt und
+// vergessen, und jedes tiefe Bild waere beim naechsten Oeffnen stufig.
+z.regler.rechenmodus = 'einfach';
+F.Speicher.standMerken(z);
+z.regler.rechenmodus = 'automatisch';
+F.Speicher.laden();
+F.Speicher.standAnwenden(z);
+pruefe('Der Rechenweg wird nicht gemerkt', z.regler.rechenmodus === 'automatisch');
 
 F.Speicher.merken({ name: 'Erstes', re: -0.5, im: 0, log2Zoom: 3, bild: 'xxx' });
 F.Speicher.merken({ name: 'Zweites', re: -0.6, im: 0, log2Zoom: 9, bild: 'yyy' });
@@ -225,44 +220,12 @@ pruefe('Dafuer faellt das aelteste Vorschaubild weg',
 pruefe('Und geschrieben wurde trotzdem', ablage.get('fraktal.stand.v1').length <= quote);
 quote = 1e9;
 
-// ===== 4. Der Dauerzoom =====
-aufsetzen(-0.743643887037151, 0.131825904205330, 10);
-z.regler.rechenmodus = 'einfach';
-F.Genauigkeit.aktualisieren(10, 'einfach', 900);
-let meldungen = [];
-F.Dauerzoom.horchen((laeuft, grund) => { meldungen.push({ laeuft, grund }); });
-
-pruefe('Am Anfang laeuft er nicht', F.Dauerzoom.laeuft() === false);
-F.Dauerzoom.umschalten();
-pruefe('Die Leertaste schaltet ihn an', F.Dauerzoom.laeuft() === true);
-pruefe('Und meldet es', meldungen.length === 1 && meldungen[0].laeuft === true);
-
-// Der erste Bildtakt nach dem Laden hat dt = 0 - das ist kein Anschlag.
-F.Dauerzoom.schritt(0);
-pruefe('Ein Bildtakt ohne Zeit haelt ihn nicht an', F.Dauerzoom.laeuft() === true);
-
-const vorZoom = z.ziel.log2Zoom;
-F.Dauerzoom.schritt(1.0);
-pruefe('Er faehrt weiter hinein',
-  nah(z.ziel.log2Zoom - vorZoom, F.Dauerzoom.TEMPO, 1e-9),
-  '+' + (z.ziel.log2Zoom - vorZoom).toFixed(2) + ' Stufen je Sekunde');
-
-// Der einfache Rechenweg ist bei Zoom ~1e4 am Ende - dort muss Schluss sein.
-let runden = 0;
-while (F.Dauerzoom.laeuft() && runden < 2000) { F.Dauerzoom.schritt(1 / 60); runden++; }
-const uebrig = F.Genauigkeit.stellen(z.ziel.log2Zoom, 900, 'einfach');
-pruefe('An der Genauigkeitsgrenze haelt er von selbst an', F.Dauerzoom.laeuft() === false);
-pruefe('Und zwar vor der Grenze, nicht dahinter', uebrig >= 1.0,
-  uebrig.toFixed(2) + ' Stellen uebrig bei Zoom ' + Math.pow(2, z.ziel.log2Zoom).toFixed(0));
-pruefe('Der Grund wird mitgeteilt',
-  meldungen[meldungen.length - 1].grund === 'grenze');
-
-// ===== 5. Die Tasten =====
+// ===== 4. Die Tasten =====
 const gerufen = [];
 F.Tastatur.starten({
   lesezeichen: () => gerufen.push('lesezeichen'),
   verweis: () => gerufen.push('verweis'),
-  dauerzoom: () => gerufen.push('dauerzoom'),
+  hilfe: () => gerufen.push('hilfe'),
 });
 const runter = horcher['window:keydown'];
 function taste(code, key, extra) {
@@ -273,12 +236,11 @@ function taste(code, key, extra) {
 }
 pruefe('B setzt ein Lesezeichen', taste('KeyB', 'b') && gerufen.indexOf('lesezeichen') >= 0);
 pruefe('L kopiert den Link', taste('KeyL', 'l') && gerufen.indexOf('verweis') >= 0);
-pruefe('Die Leertaste schaltet den Dauerzoom', taste('Space', ' ')
-  && gerufen.indexOf('dauerzoom') >= 0);
+pruefe('H ruft die Hilfe', taste('KeyH', 'h') && gerufen.indexOf('hilfe') >= 0);
 
 // Gehaltene Tasten wiederholen - einmalige Aktionen duerfen das nicht hoeren.
 const vorWiederholung = gerufen.length;
-taste('Space', ' ', { repeat: true });
+taste('KeyH', 'h', { repeat: true });
 taste('KeyB', 'b', { repeat: true });
 pruefe('Gehaltene Tasten loesen nichts mehrfach aus', gerufen.length === vorWiederholung);
 

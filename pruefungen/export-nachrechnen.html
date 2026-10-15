@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>FRAKTAL – Export nachrechnen</title>
+<link rel="stylesheet" href="../css/variablen.css">
+<style>
+  body { margin: 0; padding: 26px; background: var(--farbe-grund); color: var(--farbe-text);
+         font: 14px/1.6 var(--schrift); }
+  h1 { font-size: 19px; letter-spacing: 1.5px; margin: 0 0 4px; }
+  p.unter { margin: 0 0 22px; color: var(--farbe-text-leise); max-width: 76ch; }
+  table { border-collapse: collapse; margin: 16px 0; }
+  th, td { padding: 5px 14px 5px 0; text-align: left; vertical-align: top; }
+  th { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase;
+       color: var(--farbe-text-still); border-bottom: 1px solid var(--farbe-rand); }
+  td.zahl { font-family: var(--schrift-fest); color: var(--farbe-text-leise); }
+  .gut { color: var(--farbe-gut); } .schlecht { color: var(--farbe-warnung); }
+  .urteil { margin-top: 18px; padding: 14px 16px; border-radius: var(--radius);
+            background: var(--farbe-flaeche); border: 1px solid var(--farbe-rand); max-width: 76ch; }
+  .urteil b { display: block; margin-bottom: 6px; font-size: 16px; }
+  .bilder { display: flex; gap: 16px; margin-top: 18px; }
+  .bilder figure { margin: 0; }
+  .bilder canvas { width: 300px; height: 220px; border: 1px solid var(--farbe-rand); }
+  .bilder figcaption { font-size: 11px; color: var(--farbe-text-still); margin-top: 4px; }
+  #leinwand { display: none; }
+</style>
+</head>
+<body>
+
+<h1>Rechnet der Export dasselbe Bild?</h1>
+<p class="unter">
+  Der Export rechnet das Bild in Kacheln und setzt sie in einem 2D-Canvas
+  zusammen. Dabei kann vieles schiefgehen, ohne dass es nach einem Fehler
+  aussieht: eine Kachel kopfüber, eine Zeile verschoben, die Mitte um eine
+  halbe Kachel daneben. Diese Seite rechnet dasselbe Bild einmal in einem
+  Stück und einmal gekachelt – und vergleicht beide. Nicht stur Pixel für
+  Pixel: am Rand der Menge entscheidet die letzte Stelle über die Farbe, zwei
+  Rechnungen mit verschiedener Mitte dürfen dort auseinandergehen, ohne dass
+  eine falsch wäre. Geprüft werden deshalb die ruhigen Flächen, in denen jeder
+  Versatz sofort auffällt, und die Kachelstöße, an denen die Stücke
+  zusammenpassen müssen. Solange alle Kacheln denselben Rechenweg nehmen,
+  kommt trotzdem Pixel für Pixel dasselbe heraus – ein Unterschied ist dann
+  ein Fehler und kein Rundungsrest.
+</p>
+
+<canvas id="leinwand" width="8" height="8"></canvas>
+<div id="ausgabe">läuft …</div>
+<div class="bilder" id="bilder"></div>
+
+<script src="../js/daten/paletten.js"></script>
+<script src="../js/kern/Zustand.js"></script>
+<script src="../js/kern/Zahl.js"></script>
+<script src="../js/shader/vertex.js"></script>
+<script src="../js/shader/bausteine.js"></script>
+<script src="../js/shader/fraktal.js"></script>
+<script src="../js/gl/Kontext.js"></script>
+<script src="../js/gl/Programm.js"></script>
+<script src="../js/gl/Leinwand.js"></script>
+<script src="../js/gl/PalettenTextur.js"></script>
+<script src="../js/gl/Ziel.js"></script>
+<script src="../js/gl/Kachel.js"></script>
+<script src="../js/ansicht/Iterationen.js"></script>
+<script src="../js/ansicht/Genauigkeit.js"></script>
+<script src="../js/ansicht/Zeichner.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* Absichtlich krumm: bei Kacheln von 128 Pixeln sind das drei Spalten und
+   * zwei Zeilen, die Randkacheln angeschnitten (44 breit, 92 hoch). Genau
+   * dort sitzen die Fehler. Klein bleibt das Bild, weil diese Seite auch auf
+   * einer Software-Grafikkarte durchlaufen soll - der echte Export rechnet
+   * mit Kacheln von 1024. */
+  var BREITE = 300, HOEHE = 220, KANTE = 128;
+
+  var zeilen = [], fehler = 0;
+  function pruefe(name, ok, zusatz) {
+    zeilen.push({ name: name, ok: !!ok, zusatz: zusatz || '' });
+    if (!ok) fehler++;
+  }
+
+  var leinwand = document.getElementById('leinwand');
+  var gl = FRAKTAL.Kontext.erzeugen(leinwand);
+  if (!gl) { melden('Kein WebGL2 – hier lässt sich nichts nachrechnen.'); return; }
+
+  FRAKTAL.Leinwand.starten(gl, leinwand);
+  FRAKTAL.PalettenTextur.starten(gl);
+  FRAKTAL.PalettenTextur.waehlen('feuer');
+
+  var einfach = FRAKTAL.Programm.bauen(gl, FRAKTAL.Shader.vertex, FRAKTAL.Shader.fraktal(false));
+  var doppelt = null;
+  try {
+    doppelt = FRAKTAL.Programm.bauen(gl, FRAKTAL.Shader.vertex, FRAKTAL.Shader.fraktal(true));
+  } catch (f) { console.warn(f.message); }
+  FRAKTAL.Zeichner.starten(gl, { einfach: einfach, doppelt: doppelt });
+
+  // Eine Stelle mit viel Struktur - auf glattem Grund faellt kein Versatz auf.
+  var AUFTRAG = {
+    breite: BREITE, hoehe: HOEHE,
+    mitteRe: -0.7435, mitteIm: 0.1314,
+    skala: (FRAKTAL.Zustand.BASIS_HOEHE / 400) / HOEHE,
+    iterationen: 400, proben: 1, kante: KANTE,
+    doppelt: true                 // wie beim echten Export
+  };
+
+  pruefe('Das Bild zerfällt in sechs Kacheln, die Randreihen angeschnitten',
+    FRAKTAL.Kachel.anzahl(BREITE, HOEHE, KANTE) === 6,
+    FRAKTAL.Kachel.anzahl(BREITE, HOEHE, KANTE) + ' Kacheln à ' + KANTE);
+
+  // --- Einmal in einem Stück ---
+  var ganz = document.createElement('canvas');
+  ganz.width = BREITE;
+  ganz.height = HOEHE;
+  var ziel = FRAKTAL.Ziel.erzeugen(gl, BREITE, HOEHE);
+  pruefe('Ein Ziel in voller Größe lässt sich anlegen', ziel.taugt);
+
+  FRAKTAL.Zeichner.inZiel(ziel, AUFTRAG);
+  var puffer = new Uint8Array(BREITE * HOEHE * 4);
+  ziel.lesen(puffer);
+  var ganzBild = ganz.getContext('2d').createImageData(BREITE, HOEHE);
+  FRAKTAL.Ziel.spiegeln(puffer, ganzBild.data, BREITE, HOEHE);
+  ganz.getContext('2d').putImageData(ganzBild, 0, 0);
+  ziel.loeschen();
+
+  // --- Und einmal gekachelt ---
+  var meldungen = [];
+  FRAKTAL.Kachel.malen(gl, AUFTRAG,
+    function (getan, gesamt) { meldungen.push(getan + '/' + gesamt); },
+    function (gekachelt) {
+      if (!gekachelt) { pruefe('Der gekachelte Lauf kommt an', false); melden(); return; }
+      pruefe('Der gekachelte Lauf kommt an', true);
+      pruefe('Der Fortschritt wird gemeldet',
+        meldungen.length === 7 && meldungen[0] === '0/6' && meldungen[6] === '6/6',
+        meldungen.join(' '));
+
+      var kachelDaten = gekachelt.getContext('2d').getImageData(0, 0, BREITE, HOEHE).data;
+      vergleichen(ganzBild.data, kachelDaten);
+      zeigen(ganz, gekachelt, unterschiedsbild(ganzBild.data, kachelDaten));
+      melden();
+    });
+
+  /* Verglichen wird nicht stur Pixel fuer Pixel.
+   *
+   * Am Rand der Menge entscheidet die letzte Stelle darueber, ob ein Punkt
+   * nach dreihundert Schritten entkommt. Zwei Rechnungen mit verschiedener
+   * Mitte duerfen dort auseinandergehen, ohne dass eine falsch waere - eine
+   * Pruefung, die auf Gleichheit jedes Pixels besteht, misst dann die
+   * Gleitkommarundung und nicht die Kachelgeometrie.
+   *
+   * Geprueft wird deshalb zweierlei:
+   *   1. die ruhigen Flaechen - dort schlaegt jeder Versatz, jede gekippte
+   *      Kachel und jede verschobene Zeile sofort durch;
+   *   2. die Kachelstoesse - dort darf nicht mehr abweichen als anderswo,
+   *      sonst passen die Stuecke nicht aneinander.
+   */
+  function vergleichen(a, b) {
+    var anders = new Uint8Array(BREITE * HOEHE);
+    var gesamtAnders = 0, groesster = 0;
+
+    for (var i = 0; i < a.length; i += 4) {
+      var d = Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]),
+                       Math.abs(a[i + 2] - b[i + 2]));
+      if (d > 2) { anders[i / 4] = 1; gesamtAnders++; }
+    }
+
+    // --- 1. Ruhige Flaechen ---
+    var ruhig = 0, ruhigAnders = 0;
+    for (var y = 1; y < HOEHE - 1; y++) {
+      for (var x = 1; x < BREITE - 1; x++) {
+        var m = (y * BREITE + x) * 4;
+
+        // Ruhig heisst: die vier Nachbarn im Urbild sind fast gleich.
+        var spanne = 0;
+        [-1, 1, -BREITE, BREITE].forEach(function (versatz) {
+          var n = m + versatz * 4;
+          spanne = Math.max(spanne, Math.abs(a[m] - a[n]),
+                            Math.abs(a[m + 1] - a[n + 1]), Math.abs(a[m + 2] - a[n + 2]));
+        });
+        if (spanne > 6) continue;
+
+        ruhig++;
+        if (anders[y * BREITE + x]) {
+          ruhigAnders++;
+          groesster = Math.max(groesster, Math.abs(a[m] - b[m]),
+            Math.abs(a[m + 1] - b[m + 1]), Math.abs(a[m + 2] - b[m + 2]));
+        }
+      }
+    }
+
+    pruefe('Das Prüfbild hat genug ruhige Fläche zum Vergleichen',
+      ruhig > BREITE * HOEHE * 0.25,
+      Math.round(ruhig / (BREITE * HOEHE) * 100) + ' % der Fläche');
+    pruefe('In ruhiger Fläche ist gekachelt dasselbe wie aus einem Stück',
+      ruhigAnders / ruhig < 0.001,
+      ruhigAnders === 0 ? 'kein einziges Pixel anders'
+        : ruhigAnders + ' von ' + ruhig + ' anders, höchstens ' + groesster + ' von 255');
+
+    // --- 2. Kachelstoesse ---
+    var stoss = 0, stossAnders = 0;
+    for (var sy = 1; sy < HOEHE - 1; sy++) {
+      for (var sx = 1; sx < BREITE - 1; sx++) {
+        // Je zwei Pixel beiderseits jeder Naht. Die Zeilen zaehlen im Canvas
+        // von oben, die Kacheln von unten - daher die Umrechnung.
+        var vonUnten = HOEHE - 1 - sy;
+        var amStoss = sx % KANTE === KANTE - 1 || sx % KANTE === 0
+                   || vonUnten % KANTE === KANTE - 1 || vonUnten % KANTE === 0;
+        if (!amStoss) continue;
+
+        stoss++;
+        if (anders[sy * BREITE + sx]) stossAnders++;
+      }
+    }
+
+    var stossRate = stossAnders / stoss;
+    var gesamtRate = gesamtAnders / (BREITE * HOEHE);
+    pruefe('Auf den Kachelstößen weicht nicht mehr ab als anderswo',
+      stossRate < gesamtRate * 2 + 0.01,
+      (stossRate * 100).toFixed(1) + ' % am Stoß gegen '
+      + (gesamtRate * 100).toFixed(1) + ' % im ganzen Bild');
+
+    // Gegenprobe: ein einfarbiges Bild wuerde jeden Versatz verstecken.
+    var hell = 0, dunkel = 0;
+    for (var k = 0; k < a.length; k += 4) {
+      if (a[k] > 180) hell++;
+      if (a[k] < 40) dunkel++;
+    }
+    pruefe('Das Prüfbild hat überhaupt Struktur',
+      hell > BREITE * HOEHE * 0.05 && dunkel > BREITE * HOEHE * 0.05,
+      Math.round(hell / (BREITE * HOEHE) * 100) + ' % hell, '
+      + Math.round(dunkel / (BREITE * HOEHE) * 100) + ' % dunkel');
+  }
+
+  /* Das Unterschiedsbild verraet die Art des Fehlers: liegen die Abweichungen
+   * auf den Kachelstoessen, stimmt die Geometrie nicht; liegen sie ueberall
+   * am Rand der Menge, ist es die Rundung. */
+  function unterschiedsbild(a, b) {
+    var flaeche = document.createElement('canvas');
+    flaeche.width = BREITE;
+    flaeche.height = HOEHE;
+    var ctx = flaeche.getContext('2d');
+    var bild = ctx.createImageData(BREITE, HOEHE);
+    for (var i = 0; i < a.length; i += 4) {
+      var d = Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]),
+                       Math.abs(a[i + 2] - b[i + 2]));
+      bild.data[i] = d > 2 ? 255 : 0;
+      bild.data[i + 1] = d > 2 ? 60 : 0;
+      bild.data[i + 2] = 0;
+      bild.data[i + 3] = 255;
+    }
+    ctx.putImageData(bild, 0, 0);
+    return flaeche;
+  }
+
+  function zeigen(a, b, unterschied) {
+    var behaelter = document.getElementById('bilder');
+    [[a, 'in einem Stück gerechnet'], [b, 'aus Kacheln zusammengesetzt'],
+     [unterschied, 'wo beide abweichen (rot)']]
+      .forEach(function (paar) {
+        var bild = document.createElement('figure');
+        var klein = document.createElement('canvas');
+        klein.width = 300; klein.height = 220;
+        klein.getContext('2d').drawImage(paar[0], 0, 0, 280, 220);
+        var unterschrift = document.createElement('figcaption');
+        unterschrift.textContent = paar[1];
+        bild.appendChild(klein);
+        bild.appendChild(unterschrift);
+        behaelter.appendChild(bild);
+      });
+  }
+
+  function melden(text) {
+    var html = text ? '<p class="schlecht">' + text + '</p>' : '';
+    if (zeilen.length) {
+      html += '<table><tr><th>Prüfung</th><th>Ergebnis</th><th>Messung</th></tr>';
+      zeilen.forEach(function (zeile) {
+        html += '<tr><td>' + zeile.name + '</td><td class="'
+          + (zeile.ok ? 'gut">OK' : 'schlecht">FEHL') + '</td><td class="zahl">'
+          + zeile.zusatz + '</td></tr>';
+      });
+      html += '</table>';
+    }
+    html += '<div class="urteil">' + (fehler === 0 && zeilen.length
+      ? '<b class="gut">ALLE BESTANDEN</b>Der Export setzt die Kacheln richtig zusammen.'
+      : '<b class="schlecht">' + (fehler || '?') + ' FEHLER</b>Einzelheiten in der Tabelle.')
+      + '</div>';
+    document.getElementById('ausgabe').innerHTML = html;
+    document.title = (fehler === 0 ? 'ALLE BESTANDEN' : fehler + ' FEHLER') + ' – Export';
+  }
+})();
+</script>
+</body>
+</html>

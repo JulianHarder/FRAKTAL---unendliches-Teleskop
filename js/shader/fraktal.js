@@ -14,10 +14,6 @@
  *
  * Beide werden beim Start uebersetzt; welche zeichnet, entscheidet
  * js/ansicht/Genauigkeit.js nach dem Zoomfaktor.
- *
- * Dieselbe Schleife rechnet auch die Julia-Mengen - der Unterschied sind nur
- * die Startwerte, deshalb steht dafuer ein Schalter als Uniform und kein
- * drittes Kompilat (siehe punktFarbe).
  */
 window.FRAKTAL = window.FRAKTAL || {};
 FRAKTAL.Shader = FRAKTAL.Shader || {};
@@ -35,18 +31,13 @@ uniform float u_verschiebung;   // dreht die Palette durch
 uniform vec3  u_innen;          // Farbe der Menge selbst
 uniform int   u_proben;         // 1 = ein Punkt je Pixel, 2 = 2x2
 
-uniform int   u_julia;          // 1 = Julia-Menge statt Mandelbrot-Menge
-
 #ifdef DOPPELT
   uniform vec2 u_mitteReD;      // Bildmitte, real, als (hoch, tief)
   uniform vec2 u_mitteImD;      // Bildmitte, imaginaer
   uniform vec2 u_skalaD;        // Weltbreite je Pixel
-  uniform vec2 u_juliaReD;      // festes c der Julia-Menge, (hoch, tief)
-  uniform vec2 u_juliaImD;
 #else
   uniform vec2  u_mitte;
   uniform float u_skala;
-  uniform vec2  u_juliaC;       // festes c der Julia-Menge
 #endif
 
 out vec4 ausgabe;
@@ -60,20 +51,7 @@ out vec4 ausgabe;
  * verschwinden die harten Ringe. */
 const float GRENZE = 65536.0;   // 256 * 256, im Quadrat verglichen
 
-/* Ein Bildpunkt, von der Pixelkoordinate bis zur fertigen Farbe.
- *
- * Beide Mengen entstehen aus derselben Folge z -> z^2 + c, sie fragen nur
- * verschieden herum:
- *
- *   Mandelbrot - c ist das Pixel, die Folge faengt bei z = 0 an. Das Bild
- *                zeigt, fuer welche c sie beschraenkt bleibt.
- *   Julia      - c steht fest, eine einzige Zahl fuer das ganze Bild, und
- *                das Pixel ist der Startwert z. Das Bild zeigt, welche
- *                Startwerte bei diesem c beschraenkt bleiben.
- *
- * Ein Schalter vor der Schleife genuegt also. Er ist ein Uniform und hat fuer
- * alle Pixel denselben Wert - die Grafikkarte entscheidet einmal und nicht
- * pro Pixel, in der Schleife selbst kostet er nichts. */
+/* Ein Bildpunkt, von der Pixelkoordinate bis zur fertigen Farbe. */
 vec3 punktFarbe(vec2 pixel) {
   // gl_FragCoord zaehlt von unten links, die imaginaere Achse zeigt nach
   // oben: das passt ohne Spiegelung zusammen.
@@ -87,14 +65,10 @@ vec3 punktFarbe(vec2 pixel) {
   /* Der Pixelabstand d ist klein und ganzzahlig, also in 32 Bit exakt. Erst
    * das Produkt mit der winzigen Schrittweite und die Summe mit der Mitte
    * brauchen die zweite Haelfte der Stellen. */
-  vec2 pRe = dfAdd(u_mitteReD, dfMul(dfVon(d.x), u_skalaD));
-  vec2 pIm = dfAdd(u_mitteImD, dfMul(dfVon(d.y), u_skalaD));
-
-  bool julia = u_julia == 1;
-  vec2 cRe = julia ? u_juliaReD : pRe;
-  vec2 cIm = julia ? u_juliaImD : pIm;
-  vec2 zRe = julia ? pRe : vec2(0.0);
-  vec2 zIm = julia ? pIm : vec2(0.0);
+  vec2 cRe = dfAdd(u_mitteReD, dfMul(dfVon(d.x), u_skalaD));
+  vec2 cIm = dfAdd(u_mitteImD, dfMul(dfVon(d.y), u_skalaD));
+  vec2 zRe = vec2(0.0);
+  vec2 zIm = vec2(0.0);
 
   for (int i = 0; i < u_iterationen; i++) {
     vec2 re2 = dfMul(zRe, zRe);
@@ -111,9 +85,8 @@ vec3 punktFarbe(vec2 pixel) {
     if (betrag2 > GRENZE) { entkommen = true; break; }
   }
 #else
-  vec2 p = u_mitte + d * u_skala;
-  vec2 c = u_julia == 1 ? u_juliaC : p;
-  vec2 z = u_julia == 1 ? p : vec2(0.0);
+  vec2 c = u_mitte + d * u_skala;
+  vec2 z = vec2(0.0);
 
   for (int i = 0; i < u_iterationen; i++) {
     // (x + yi)^2 = (x^2 - y^2) + (2xy)i

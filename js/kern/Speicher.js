@@ -55,17 +55,19 @@ FRAKTAL.Speicher = (function () {
     inhalt.stand = {
       re: z.ansicht.mitteRe,
       im: z.ansicht.mitteIm,
-      log2Zoom: z.ansicht.log2Zoom,
-      menge: z.menge,
-      juliaRe: z.julia.re,
-      juliaIm: z.julia.im
+      log2Zoom: z.ansicht.log2Zoom
     };
+    /* Der Rechenweg wird mit Absicht NICHT gemerkt.
+     *
+     * Er ist kein Geschmack, sondern ein Werkzeug zum Vergleichen: einmal auf
+     * "einfach" gestellt und vergessen, und jedes tiefe Bild ist beim
+     * naechsten Oeffnen stufig - ohne dass man noch weiss, warum. Jede
+     * Sitzung faengt deshalb wieder bei "automatisch" an. */
     inhalt.regler = {
       palette: z.regler.palette,
       dichte: z.regler.dichte,
       verschiebung: z.regler.verschiebung,
-      qualitaet: z.regler.qualitaet,
-      rechenmodus: z.regler.rechenmodus
+      qualitaet: z.regler.qualitaet
     };
     schreiben();
   }
@@ -75,11 +77,6 @@ FRAKTAL.Speicher = (function () {
     var s = inhalt.stand;
     if (!s || !isFinite(s.re) || !isFinite(s.im) || !isFinite(s.log2Zoom)) return false;
 
-    z.menge = s.menge === 'julia' ? 'julia' : 'mandelbrot';
-    if (isFinite(s.juliaRe) && isFinite(s.juliaIm)) {
-      z.julia.re = s.juliaRe;
-      z.julia.im = s.juliaIm;
-    }
     z.ansicht.mitteRe = z.ziel.mitteRe = s.re;
     z.ansicht.mitteIm = z.ziel.mitteIm = s.im;
     z.ansicht.log2Zoom = z.ziel.log2Zoom = s.log2Zoom;
@@ -90,7 +87,6 @@ FRAKTAL.Speicher = (function () {
       if (isFinite(r.dichte)) z.regler.dichte = r.dichte;
       if (isFinite(r.verschiebung)) z.regler.verschiebung = r.verschiebung;
       if (isFinite(r.qualitaet)) z.regler.qualitaet = r.qualitaet;
-      if (r.rechenmodus) z.regler.rechenmodus = r.rechenmodus;
     }
     return true;
   }

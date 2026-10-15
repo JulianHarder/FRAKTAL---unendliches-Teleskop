@@ -1,8 +1,8 @@
 /* Eine kurze Meldung über der Leinwand.
  *
  * Fuer die Dinge, die sonst lautlos passieren: ein Lesezeichen ist gesetzt,
- * ein Link liegt in der Zwischenablage, der Dauerzoom ist an der Grenze
- * stehengeblieben. Ohne Rueckmeldung weiss niemand, ob die Taste ankam.
+ * ein Link liegt in der Zwischenablage, ein Bild ist fertig gerechnet. Ohne
+ * Rueckmeldung weiss niemand, ob die Taste ankam.
  *
  * Der Zusatz ist fuer den Fall, dass der Browser das Kopieren verweigert -
  * dann steht der Link selbst da und laesst sich von Hand markieren.

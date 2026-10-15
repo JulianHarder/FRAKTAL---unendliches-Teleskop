@@ -9,6 +9,56 @@ window.FRAKTAL = window.FRAKTAL || {};
 
 FRAKTAL.Texte = {
 
+  /* Das Hilfefenster. `tasten` ist eine Liste aus Taste und Wirkung. */
+  hilfe: {
+    titel: 'Was hier zu sehen ist',
+    absaetze: [
+      'Jedes Pixel ist eine komplexe Zahl c. Gefragt wird, ob die Folge '
+        + 'z → z² + c beschränkt bleibt. Bleibt sie es, gehört c zur '
+        + 'Mandelbrot-Menge – das ist das Schwarze. Draußen zeigt die Farbe, '
+        + 'wie schnell die Folge entkommen ist.',
+      'Gerechnet wird das für jedes Pixel einzeln auf der Grafikkarte, bei '
+        + 'jedem Bild neu. Deshalb kann man hineinfahren, ohne an ein Ende '
+        + 'zu kommen: es gibt kein fertiges Bild, in das man hineinzoomt, '
+        + 'sondern jede Ebene wird gerechnet, wenn man sie ansieht.',
+      'Irgendwann ist trotzdem Schluss, und zwar nicht beim Fraktal, sondern '
+        + 'bei den Zahlen. Wie viel Luft noch bleibt, steht links unter '
+        + '„Genauigkeit“ – ehrlich, statt versteckt.'
+    ],
+    gruppen: [
+      {
+        titel: 'Bewegen',
+        tasten: [
+          ['Mausrad', 'zoomen, und zwar dorthin, wo der Zeiger steht'],
+          ['Ziehen', 'das Bild verschieben'],
+          ['Doppelklick', 'eine Stufe näher heran, mit Umschalt wieder heraus'],
+          [['W', 'A', 'S', 'D'], 'schieben, auch mit den Pfeiltasten'],
+          [['+', '−'], 'zoomen ohne Maus'],
+          ['0', 'zurück zur Übersicht']
+        ]
+      },
+      {
+        titel: 'Sehen',
+        tasten: [
+          [['1', '…', '5'], 'Palette wählen'],
+          ['G', 'Rechenweg: automatisch, einfach, doppelt genau']
+        ]
+      },
+      {
+        titel: 'Behalten',
+        tasten: [
+          ['B', 'Lesezeichen für diese Stelle, mit Vorschaubild'],
+          ['L', 'Link zu dieser Stelle in die Zwischenablage'],
+          ['H', 'diese Hilfe auf und zu'],
+          ['Esc', 'Fenster schließen']
+        ]
+      }
+    ],
+    schluss: 'Nichts davon wird ins Netz geschickt. Die Seite lädt keine '
+      + 'Bibliothek, keine Schrift und kein Bild; Lesezeichen und der letzte '
+      + 'Stand liegen im Speicher des Browsers, sonst nirgends.'
+  },
+
   erklaerung: {
     mandelbrot: {
       titel: 'Mandelbrot-Menge',
@@ -23,18 +73,5 @@ FRAKTAL.Texte = {
       ]
     },
 
-    julia: {
-      titel: 'Julia-Menge',
-      saetze: [
-        'Dieselbe Folge z → z² + c, nur andersherum gefragt: c steht jetzt '
-          + 'fest – eine einzige Zahl für das ganze Bild –, und jedes Pixel '
-          + 'ist der Startwert z. Zu sehen ist also, welche Startwerte bei '
-          + 'diesem c beschränkt bleiben.',
-        'Jeder Punkt der Mandelbrot-Menge hat seine eigene Julia-Menge, und '
-          + 'die Formen hängen zusammen: nahe am Rand der Mandelbrot-Menge '
-          + 'wird die Julia-Menge filigran, weit außerhalb zerfällt sie zu '
-          + 'Staub. Mit J geht es zurück.'
-      ]
-    }
   }
 };

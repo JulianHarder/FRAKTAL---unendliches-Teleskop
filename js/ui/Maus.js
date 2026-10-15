@@ -5,9 +5,6 @@
  * nicht abreisst, wenn der Zeiger die Leinwand verlaesst.
  *
  * Ein Finger schiebt, zwei Finger kneifen (zoomen) und schieben gleichzeitig.
- *
- * Nebenbei meldet jede Zeigerbewegung ihre Stelle an die Julia-Vorschau -
- * auch die ohne gedrueckte Taste, denn die Vorschau folgt dem Zeiger.
  */
 window.FRAKTAL = window.FRAKTAL || {};
 
@@ -48,8 +45,6 @@ FRAKTAL.Maus = (function () {
     var o = ortVon(ereignis, r);
     FRAKTAL.Kamera.zoomen(rastungen(ereignis) * FRAKTAL.Kamera.RASTUNG, o.x, o.y, r);
     FRAKTAL.Zeichner.eingabe();
-    // Beim Zoomen bleibt der Zeiger stehen, aber die Welt unter ihm wechselt.
-    vorschauFolgen(o, r);
   }
 
   /* Mausraeder melden in Pixeln, Zeilen oder Seiten - je nach Browser und
@@ -77,16 +72,11 @@ FRAKTAL.Maus = (function () {
   }
 
   function beiBewegung(ereignis) {
+    var alt = zeiger[ereignis.pointerId];
+    if (!alt) return;
+
     var r = rechteck();
     var neu = ortVon(ereignis, r);
-    var alt = zeiger[ereignis.pointerId];
-
-    // Ohne gedrueckte Taste wird nichts verschoben - nur die Vorschau folgt.
-    if (!alt) {
-      vorschauFolgen(neu, r);
-      return;
-    }
-
     var dx = neu.x - alt.x;
     var dy = neu.y - alt.y;
     zeiger[ereignis.pointerId] = neu;
@@ -97,13 +87,6 @@ FRAKTAL.Maus = (function () {
       kneifen(r);
     }
     FRAKTAL.Zeichner.eingabe();
-    vorschauFolgen(neu, r);
-  }
-
-  /* Der Vorschau sagen, wo der Zeiger steht. Das c dort rechnet sie selbst
-   * aus - erst im Bildtakt, weil die Kamera bis dahin noch weiterfaehrt. */
-  function vorschauFolgen(o, r) {
-    if (FRAKTAL.JuliaVorschau) FRAKTAL.JuliaVorschau.zeigen(o.x, o.y, r);
   }
 
   /* Zwei Finger: der Abstand steuert den Zoom, der Mittelpunkt ist der

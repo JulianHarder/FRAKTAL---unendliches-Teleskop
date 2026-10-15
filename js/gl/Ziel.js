@@ -1,9 +1,8 @@
 /* Ein Zeichenziel neben dem Bildschirm: Framebuffer mit Textur dahinter.
  *
- * Gebraucht wird das fuer die Julia-Vorschau. Die soll dem Mauszeiger folgen,
- * auch wenn das Hauptbild gerade still steht - und das Hauptbild darf dafuer
- * nicht neu gerechnet werden: tief drinnen kostet es eine halbe Sekunde, die
- * Vorschau waere dann ein Ruckelbild und das Fraktal dauernd grob.
+ * Gebraucht wird das von den Vorschaubildern der Lesezeichen und vom Export:
+ * beide muessen ein Bild in einer anderen Groesse rechnen als die Leinwand
+ * hat, ohne das Bild auf dem Schirm anzuruehren.
  *
  * Also wird nicht auf die Leinwand gezeichnet, sondern in einen eigenen
  * Puffer. Derselbe WebGL-Kontext, dieselben Shader, nur ein anderes Ziel -

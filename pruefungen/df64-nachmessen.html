@@ -9,6 +9,8 @@
   body { margin: 0; padding: 28px; background: var(--farbe-grund); color: var(--farbe-text);
          font: 14px/1.6 var(--schrift); }
   h1 { font-size: 19px; letter-spacing: 1.5px; margin: 0 0 4px; }
+  h2 { font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase;
+       color: var(--farbe-text-still); margin: 28px 0 4px; }
   p.unter { margin: 0 0 24px; color: var(--farbe-text-leise); max-width: 70ch; }
   table { border-collapse: collapse; margin: 18px 0; }
   th, td { padding: 6px 14px 6px 0; text-align: left; vertical-align: top; }
@@ -45,6 +47,9 @@
 <script src="../js/shader/bausteine.js"></script>
 <script src="../js/gl/Kontext.js"></script>
 <script src="../js/gl/Programm.js"></script>
+<script src="../js/gl/Leinwand.js"></script>
+<script src="../js/gl/Ziel.js"></script>
+<script src="../js/gl/Nachmessen.js"></script>
 <script>
 (function () {
   'use strict';
@@ -120,6 +125,7 @@ void main() {
   var t = FRAKTAL.Zahl.teilen;
   var mitte = t(-0.743643887037151);
   gl.uniform1f(programm.ort('u_split'), 4097.0);
+  gl.uniform1f(programm.ort('u_eins'), 1.0);
   gl.uniform2f(programm.ort('u_mitte'), mitte[0], mitte[1]);
   gl.uniform2f(programm.ort('u_grob'), t(1e-12)[0], t(1e-12)[1]);
   gl.uniform2f(programm.ort('u_fein'), t(1e-15)[0], t(1e-15)[1]);
@@ -172,10 +178,46 @@ void main() {
       + 'die Fehlerterme wegoptimiert. Dann hilft nur, die Aufspaltung weiter zu '
       + 'verschleiern – siehe die Erklärung in <code>js/shader/bausteine.js</code>.';
 
+  /* Und dieselbe Frage noch einmal, diesmal mit dem Modul, das FRAKTAL
+   * beim Start selbst benutzt (js/gl/Nachmessen.js). Die Zahl, die dabei
+   * herauskommt, steht auch in der Seitenleiste der Seite. */
+  FRAKTAL.Leinwand.starten(gl, leinwand);
+  var mass = FRAKTAL.Nachmessen.doppelt(gl);
+  var leiter = '';
+  if (mass) {
+    leiter = '<h2>Die Leiter, Stufe für Stufe</h2>'
+      + '<p class="unter">So fein darf der Abstand zweier Nachbarpixel sein, '
+      + 'damit sie noch verschiedene Zahlen ergeben. Die feinste Stufe, die '
+      + 'noch durchkommt, ist das, was diese Karte wirklich trägt.</p>'
+      + '<table><tr><th>Abstand</th><th>kommt wieder heraus</th><th></th></tr>';
+    mass.stufen.forEach(function (stufe) {
+      leiter += '<tr><td class="zahl">2<sup>−' + (stufe.bits - 1) + '</sup>'
+        + ' <span style="opacity:.6">(' + stufe.bits + ' Bit)</span></td>'
+        + '<td class="zahl">' + Math.round(stufe.verhaeltnis * 100) + ' %</td>'
+        + '<td class="' + (stufe.getroffen ? 'gut">ja' : 'schlecht">nein') + '</td></tr>';
+    });
+    leiter += '</table><div class="urteil">'
+      + (mass.bits >= 44
+        ? '<b class="gut">' + mass.bits + ' Bit nachgemessen.</b>'
+          + 'Die Doppelgenauigkeit trägt hier so viel, wie sie tragen kann. '
+          + 'FRAKTAL rechnet mit höchstens 46 davon – der Rest geht beim '
+          + 'Quadrieren in der Schleife ohnehin verloren.'
+        : '<b class="schlecht">Nur ' + mass.bits + ' von 46 Bit.</b>'
+          + 'Diese Karte rechnet die Doppelgenauigkeit nur zum Teil. FRAKTAL '
+          + 'rechnet von sich aus mit diesem Wert weiter – die Stellenanzeige '
+          + 'und die Grenzwarnung sind dann trotzdem ehrlich, das Bild wird '
+          + 'nur früher stufig.')
+      + '</div>';
+  } else {
+    leiter = '<div class="urteil"><b class="schlecht">Nicht messbar.</b>'
+      + 'Keine der Stufen kam durch – hier stimmt etwas Grundsätzliches nicht.</div>';
+  }
+
   ausgabe.innerHTML =
     '<table><tr><th>Rechnung</th><th>gemessen</th><th>erwartet</th><th></th><th></th></tr>'
     + reihen.join('') + '</table>'
     + '<div class="urteil">' + urteil + '</div>'
+    + leiter
     + '<p class="unter" style="margin-top:18px">Gerechnet auf: <code>'
     + FRAKTAL.Kontext.faehigkeiten(gl).renderer + '</code></p>';
 })();

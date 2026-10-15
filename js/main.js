@@ -52,40 +52,41 @@ FRAKTAL.Haupt = (function () {
     FRAKTAL.PalettenTextur.starten(gl);
     FRAKTAL.PalettenTextur.waehlen(z.regler.palette);
     FRAKTAL.Seitenleiste.starten();
-    FRAKTAL.Seitenleiste.erklaerung(z.menge);
+    FRAKTAL.Seitenleiste.erklaerung();
     FRAKTAL.Seitenleiste.grafikkarte(FRAKTAL.Kontext.faehigkeiten(gl).renderer);
+
     FRAKTAL.Kontext.ueberwachen(leinwand, neuAufbauen);
 
     // Die Moduswahl muss stehen, bevor programmBauen ihre Verfügbarkeit setzt.
     FRAKTAL.Rechenmodus.starten(function () { FRAKTAL.Zeichner.eingabe(); });
     if (!programmBauen()) return;
 
-    FRAKTAL.JuliaVorschau.starten(gl);
-    FRAKTAL.Menge.horchen(mengeGewechselt);
     FRAKTAL.Meldung.starten();
     FRAKTAL.Ortswahl.starten(function () { FRAKTAL.Zeichner.eingabe(); });
     FRAKTAL.Lesezeichen.starten(gl, function () { FRAKTAL.Zeichner.eingabe(); });
-    FRAKTAL.Dauerzoom.horchen(dauerzoomGewechselt);
+    FRAKTAL.Export.starten(gl);
+    FRAKTAL.Hilfe.starten();
 
+    FRAKTAL.Seitenleiste.genauigkeitGemessen(z.laufzeit.bits);
     FRAKTAL.Maus.starten(leinwand);
     FRAKTAL.Farbwahl.starten(function () { FRAKTAL.Zeichner.eingabe(); });
     FRAKTAL.Tastatur.starten({
       einpassen: uebersicht,
       palette: function (nummer) { FRAKTAL.Farbwahl.nachNummer(nummer); },
       rechenweg: function () { FRAKTAL.Rechenmodus.weiter(); },
-      menge: mengeWechseln,
       lesezeichen: function () { FRAKTAL.Lesezeichen.setzen(); },
       verweis: function () { FRAKTAL.Verweis.kopieren(); },
-      dauerzoom: function () { FRAKTAL.Dauerzoom.umschalten(); }
+      hilfe: function () { FRAKTAL.Hilfe.umschalten(); },
+      schliessen: schliessen
     });
 
     document.getElementById('knopf-uebersicht').addEventListener('click', uebersicht);
-    document.getElementById('knopf-dauerzoom')
-      .addEventListener('click', function () { FRAKTAL.Dauerzoom.umschalten(); });
     document.getElementById('knopf-merken')
       .addEventListener('click', function () { FRAKTAL.Lesezeichen.setzen(); });
     document.getElementById('knopf-link')
       .addEventListener('click', function () { FRAKTAL.Verweis.kopieren(); });
+    document.getElementById('knopf-hilfe')
+      .addEventListener('click', function () { FRAKTAL.Hilfe.umschalten(); });
 
     letzteBreite = leinwand.clientWidth;
     letzteHoehe = leinwand.clientHeight;
@@ -126,10 +127,45 @@ FRAKTAL.Haupt = (function () {
         + bits + ' Bit - zu wenig für die Doppelgenauigkeit.');
     }
 
+    if (doppelt) doppelt = nachmessen(doppelt);
+
     FRAKTAL.Genauigkeit.doppeltVerfuegbar(!!doppelt);
     FRAKTAL.Rechenmodus.verfuegbarkeit(!!doppelt);
     FRAKTAL.Zeichner.starten(gl, { einfach: einfach, doppelt: doppelt });
     return true;
+  }
+
+  /* Nachmessen, was die Karte im Doppelmodus wirklich traegt.
+   *
+   * Ohne diese Messung glaubt die Oberflaeche der Annahme von 46 Bit und
+   * verspricht Stellen, die es auf dieser Karte vielleicht gar nicht gibt -
+   * das Bild wird stufig und daneben steht "doppelt, 5 Stellen uebrig". Wer
+   * das sieht, sucht den Fehler bei sich.
+   *
+   * Bringt der doppelte Weg nichts, wird er abgeschaltet: er kostet das
+   * Fuenffache und waere nur eine teure Luege. */
+  function nachmessen(programm) {
+    var mass = FRAKTAL.Nachmessen.doppelt(gl);
+    if (!mass) return programm;            // nicht messbar - bei der Annahme bleiben
+
+    // Was gemessen wurde, kann ueber der Annahme liegen - mehr als die
+    // Emulation hergibt, wird daraus trotzdem nicht. Angezeigt wird der
+    // Wert, mit dem auch gerechnet wird.
+    z.laufzeit.bits = FRAKTAL.Zahl.gemessen(mass.bits);
+
+    if (mass.bits <= FRAKTAL.Zahl.BITS_EINFACH + 2) {
+      console.warn('Die Doppelgenauigkeit bringt auf dieser Grafikkarte nichts: '
+        + 'nachgemessen ' + mass.bits + ' statt 46 Bit. Der Shader-Compiler hat '
+        + 'die Fehlerterme vermutlich wegoptimiert.');
+      programm.loeschen();
+      return null;
+    }
+
+    if (mass.bits < 44) {
+      console.warn('Diese Grafikkarte traegt im Doppelmodus nur ' + mass.bits
+        + ' von 46 Bit - tief drinnen wird das Bild frueher stufig.');
+    }
+    return programm;
   }
 
   /* Nach einem Kontextverlust: alles, was auf der Grafikkarte lag, ist weg. */
@@ -137,25 +173,7 @@ FRAKTAL.Haupt = (function () {
     FRAKTAL.Leinwand.starten(gl, leinwand);
     // Auch die Palettentextur lag auf der Grafikkarte und ist weg.
     FRAKTAL.PalettenTextur.starten(gl);
-    // Und das Zeichenziel der Julia-Vorschau.
-    FRAKTAL.JuliaVorschau.starten(gl);
     if (programmBauen()) FRAKTAL.Zeichner.eingabe();
-  }
-
-  /* Taste J: zwischen Mandelbrot- und Julia-Menge wechseln. Beim ersten Mal
-   * dient das c unter dem Zeiger als Startwert. */
-  function mengeWechseln() {
-    var c = FRAKTAL.JuliaVorschau.c();
-    if (c) FRAKTAL.Menge.wechseln(c.re, c.im);
-    else FRAKTAL.Menge.wechseln();
-  }
-
-  /* Die Menge hat gewechselt - egal ob per Taste oder per Klick auf die
-   * Vorschau. Oberflaeche nachziehen und ein neues Bild rechnen lassen. */
-  function mengeGewechselt(menge) {
-    FRAKTAL.Seitenleiste.erklaerung(menge);
-    FRAKTAL.JuliaVorschau.mengeGewechselt();
-    FRAKTAL.Zeichner.eingabe();
   }
 
   /* Browser melden `resize` auch, wenn sich an der Leinwand nichts aendert -
@@ -170,34 +188,15 @@ FRAKTAL.Haupt = (function () {
   }
 
   function uebersicht() {
-    FRAKTAL.Dauerzoom.aus();
     FRAKTAL.Kamera.einpassen();
     FRAKTAL.Zeichner.eingabe();
   }
 
-  /* Der Dauerzoom ist an- oder ausgegangen. Geht er von selbst aus, steht in
-   * `grund`, warum - und das gehoert gesagt: wer nicht erfaehrt, dass die
-   * Genauigkeit zu Ende ist, haelt das Anhalten fuer einen Fehler. */
-  function dauerzoomGewechselt(laeuft, grund) {
-    var knopf = document.getElementById('knopf-dauerzoom');
-    if (knopf) knopf.setAttribute('aria-pressed', laeuft ? 'true' : 'false');
-
-    if (laeuft) {
-      FRAKTAL.Meldung.zeigen('Dauerzoom läuft – Leertaste hält an.');
-    } else if (grund === 'grenze') {
-      FRAKTAL.Meldung.zeigen('Dauerzoom angehalten: die Genauigkeit ist am Ende. '
-        + 'Tiefer wird das Bild stufig, nicht detaillierter.');
-    } else if (grund === 'anschlag') {
-      FRAKTAL.Meldung.zeigen('Dauerzoom angehalten: tiefer geht die Kamera nicht.');
-    }
-    FRAKTAL.Zeichner.eingabe();
-  }
-
-  function keinWebglZeigen(text) {
-    var hinweis = document.getElementById('kein-webgl');
-    if (text) document.getElementById('kein-webgl-text').textContent = text;
-    hinweis.hidden = false;
-    leinwand.style.display = 'none';
+  /* Taste Esc: wegraeumen, was offen ist - nur eines je Druck. Wer die Hilfe
+   * schliesst, will nicht zugleich den Export abbrechen. */
+  function schliessen() {
+    if (FRAKTAL.Hilfe.offen()) { FRAKTAL.Hilfe.zu(); return; }
+    if (FRAKTAL.Export.laeuft()) FRAKTAL.Export.abbrechen();
   }
 
   // --- Die Schleife ---
@@ -210,16 +209,9 @@ FRAKTAL.Haupt = (function () {
     if (dt > 0.1) dt = 0.1;
 
     var bewegt = tasten(dt);
-    // Vor der Kamera: der Dauerzoom schiebt das Ziel, die Kamera zieht nach.
-    if (FRAKTAL.Dauerzoom.schritt(dt)) bewegt = true;
     if (FRAKTAL.Kamera.schritt(dt)) bewegt = true;
 
     if (FRAKTAL.Zeichner.schritt(jetzt, bewegt)) bildzaehler++;
-
-    /* Die Vorschau danach: sie zeichnet in ihr eigenes Ziel und laesst das
-     * Hauptbild in Ruhe. Faehrt die Kamera noch, wandert die Welt unter dem
-     * Zeiger weg - dann muss auch sie neu gerechnet werden. */
-    FRAKTAL.JuliaVorschau.schritt(bewegt);
 
     bildrateMessen(jetzt);
     standMerken(jetzt);
@@ -251,8 +243,8 @@ FRAKTAL.Haupt = (function () {
     merkZeit = jetzt;
 
     var jetztStand = [z.ansicht.mitteRe, z.ansicht.mitteIm, z.ansicht.log2Zoom,
-      z.menge, z.julia.re, z.julia.im, z.regler.palette, z.regler.dichte,
-      z.regler.verschiebung, z.regler.qualitaet, z.regler.rechenmodus].join('|');
+      z.regler.palette, z.regler.dichte, z.regler.verschiebung,
+      z.regler.qualitaet].join('|');
     if (jetztStand === letzterStand) return;
 
     letzterStand = jetztStand;

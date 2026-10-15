@@ -39,15 +39,31 @@ FRAKTAL.Zahl = (function () {
     return Math.pow(2, 1 - bits);
   }
 
-  return {
+  /* Den nachgemessenen Wert uebernehmen (siehe js/gl/Nachmessen.js).
+   *
+   * 46 ist eine Annahme ueber eine Grafikkarte, die sich an die Regeln haelt.
+   * Was sie wirklich traegt, weiss man erst nach der Messung - und danach
+   * muessen sich Umschaltschwelle und Anzeige richten, sonst verspricht die
+   * Oberflaeche Stellen, die es nicht gibt. */
+  function gemessen(bits) {
+    if (!isFinite(bits)) return werte.BITS_DOPPELT;
+    werte.BITS_DOPPELT = Math.max(werte.BITS_EINFACH, Math.min(46, bits));
+    return werte.BITS_DOPPELT;
+  }
+
+  var werte = {
     teilen: teilen,
     zusammen: zusammen,
     aufloesung: aufloesung,
+    gemessen: gemessen,
 
     // Nutzbare Mantissenbits. 24 ist der Normwert fuer 32-Bit-Zahlen.
     // 46 statt 48 fuer die Doppelgenauigkeit: die Emulation verliert durch
-    // das staendige Renormalisieren rund zwei Bit.
+    // das staendige Renormalisieren rund zwei Bit. Beim Start wird dieser
+    // Wert nachgemessen und gegebenenfalls heruntergesetzt.
     BITS_EINFACH: 24,
     BITS_DOPPELT: 46
   };
+
+  return werte;
 })();

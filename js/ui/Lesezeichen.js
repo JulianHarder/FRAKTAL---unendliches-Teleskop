@@ -59,9 +59,6 @@ FRAKTAL.Lesezeichen = (function () {
       re: z.ansicht.mitteRe,
       im: z.ansicht.mitteIm,
       log2Zoom: z.ansicht.log2Zoom,
-      menge: z.menge,
-      juliaRe: z.julia.re,
-      juliaIm: z.julia.im,
       palette: z.regler.palette,
       bild: vorschaubild()
     });
@@ -76,7 +73,7 @@ FRAKTAL.Lesezeichen = (function () {
     var text = zoom < 10000
       ? 'Zoom ' + zoom.toLocaleString('de-DE', { maximumFractionDigits: 0 })
       : 'Zoom ' + zoom.toExponential(1).replace('.', ',').replace('e+', 'e');
-    return z.menge === 'julia' ? 'Julia, ' + text : text;
+    return text;
   }
 
   /* Das Vorschaubild. Mit Kantenglaettung, weil 96x64 jede Treppe zeigt. */
@@ -91,10 +88,7 @@ FRAKTAL.Lesezeichen = (function () {
       mitteIm: z.ansicht.mitteIm,
       skala: weltHoehe / HOEHE,
       iterationen: FRAKTAL.Iterationen.fuer(z.ansicht.log2Zoom, z.regler.qualitaet),
-      proben: 2,
-      julia: z.menge === 'julia',
-      cRe: z.julia.re,
-      cIm: z.julia.im
+      proben: 2
     });
     if (!gelang) return null;
 
@@ -111,12 +105,6 @@ FRAKTAL.Lesezeichen = (function () {
 
   /* Hin zum Lesezeichen - geflogen, wie zu den berühmten Stellen auch. */
   function anfliegen(eintrag) {
-    FRAKTAL.Dauerzoom.aus();
-
-    // Ein Lesezeichen aus einer Julia-Menge bringt sein festes c mit.
-    if (eintrag.menge === 'julia') FRAKTAL.Menge.nachJulia(eintrag.juliaRe, eintrag.juliaIm);
-    else if (FRAKTAL.Menge.istJulia()) FRAKTAL.Menge.nachMandelbrot();
-
     if (eintrag.palette) FRAKTAL.Farbwahl.waehlen(eintrag.palette);
 
     FRAKTAL.Kamera.hinfliegen({
@@ -170,8 +158,7 @@ FRAKTAL.Lesezeichen = (function () {
     var name = document.createElement('b');
     name.textContent = eintrag.name;
     var unten = document.createElement('i');
-    unten.textContent = zoomText(eintrag.log2Zoom)
-      + (eintrag.menge === 'julia' ? ' · Julia' : '');
+    unten.textContent = zoomText(eintrag.log2Zoom);
     text.appendChild(name);
     text.appendChild(unten);
     knopf.appendChild(text);

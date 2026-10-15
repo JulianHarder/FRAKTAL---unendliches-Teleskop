@@ -27,8 +27,21 @@ FRAKTAL.Zeichner = (function () {
   var ZU_LANGSAM_MS = 1000;
   var SCHNELL_GENUG_MS = 200;
 
-  // 2^12 + 1. Kommt als Uniform in den Shader, damit der Compiler die
-  // Aufspaltung nicht wegkuerzen kann - siehe js/shader/bausteine.js.
+  /* Die Notbremse zieht in zwei Stufen, und die Reihenfolge ist der ganze
+   * Witz daran: zuerst faellt die Kantenglaettung weg, erst danach wird an
+   * der Iterationstiefe gespart.
+   *
+   * Die Glaettung kostet das Vierfache und bringt ein bisschen weichere
+   * Raender. Die Tiefe dagegen ist der Inhalt: wer dort spart, dem faellt
+   * tief drinnen die Struktur weg und das Bild wird schwarz. Andersherum
+   * gedrosselt sieht es aus, als waere das Fraktal zu Ende. */
+  var glaetten = true;
+
+  /* 2^12 + 1. Kommt als Uniform in den Shader, damit der Compiler die
+   * Aufspaltung nicht wegkuerzen kann - siehe js/shader/bausteine.js. Dort
+   * steht auch, warum es daneben eine Eins als Uniform gibt. Beide muessen
+   * gesetzt werden: ein vergessenes Uniform ist null, und dann rechnet die
+   * halbe Arithmetik null. */
   var SPLIT = 4097.0;
 
   var gl = null;
@@ -47,6 +60,8 @@ FRAKTAL.Zeichner = (function () {
     gl = grafik;
     programme = gebaute;
     feinAusstehend = true;
+    glaetten = true;
+    notbremse = 1.0;
   }
 
   /* Von jeder Eingabe aufrufen: Mausrad, Ziehen, Taste, Fenstergroesse.
@@ -113,11 +128,8 @@ FRAKTAL.Zeichner = (function () {
       mitteIm: z.ansicht.mitteIm,
       skala: z.skala(g.hoehe),
       iterationen: iterationen,
-      // Kanten glaetten nur im Standbild - in Bewegung sieht es ohnehin niemand.
-      proben: fein ? 2 : 1,
-      julia: z.menge === 'julia',
-      cRe: z.julia.re,
-      cIm: z.julia.im
+      // Kanten glaetten nur im Standbild, und nur solange Zeit dafuer ist.
+      proben: (fein && glaetten) ? 2 : 1
     });
 
     FRAKTAL.Leinwand.zeichnen();
@@ -132,9 +144,9 @@ FRAKTAL.Zeichner = (function () {
   /* Alle Uniforms fuer ein Bild setzen.
    *
    * `o` beschreibt das Bild vollstaendig: Groesse, Ausschnitt, Tiefe,
-   * Unterabtastung und welche Menge. Dadurch setzt derselbe Weg das Hauptbild
-   * und die kleine Julia-Vorschau - die unterscheiden sich nur in diesen
-   * Werten, nicht im Vorgehen. */
+   * Unterabtastung. Dadurch setzt derselbe Weg das Hauptbild, die
+   * Vorschaubilder der Lesezeichen und die Kacheln des Exports - die
+   * unterscheiden sich nur in diesen Werten, nicht im Vorgehen. */
   function bildSetzen(programm, o) {
     var palette = FRAKTAL.PalettenTextur.aktuell();
 
@@ -156,16 +168,7 @@ FRAKTAL.Zeichner = (function () {
     gl.uniform2f(programm.ort('u_mitteImD'), mitteIm[0], mitteIm[1]);
     gl.uniform2f(programm.ort('u_skalaD'), feinSchritt[0], feinSchritt[1]);
     gl.uniform1f(programm.ort('u_split'), SPLIT);
-
-    /* Welche Menge. Das feste c geht in beiden Formaten hinueber - tief in
-     * einer Julia-Menge traegt es die Form des ganzen Bildes, da waeren
-     * sieben Stellen zu wenig. */
-    gl.uniform1i(programm.ort('u_julia'), o.julia ? 1 : 0);
-    gl.uniform2f(programm.ort('u_juliaC'), o.cRe, o.cIm);
-    var juliaRe = FRAKTAL.Zahl.teilen(o.cRe);
-    var juliaIm = FRAKTAL.Zahl.teilen(o.cIm);
-    gl.uniform2f(programm.ort('u_juliaReD'), juliaRe[0], juliaRe[1]);
-    gl.uniform2f(programm.ort('u_juliaImD'), juliaIm[0], juliaIm[1]);
+    gl.uniform1f(programm.ort('u_eins'), 1.0);
 
     FRAKTAL.PalettenTextur.binden();
     gl.uniform1i(programm.ort('u_palette'), 0);
@@ -176,20 +179,27 @@ FRAKTAL.Zeichner = (function () {
     gl.uniform1i(programm.ort('u_proben'), o.proben);
   }
 
-  /* Ein Bild in ein Ziel neben dem Bildschirm zeichnen - die Julia-Vorschau
-   * (js/ui/JuliaVorschau.js) holt sich die Pixel danach von dort.
+  /* Ein Bild in ein Ziel neben dem Bildschirm zeichnen; der Aufrufer holt
+   * sich die Pixel danach mit `lesen` von dort.
    *
    * Welcher Rechenweg, entscheidet dasselbe Mass wie beim Hauptbild - nur
-   * fuer dieses kleine Bild gerechnet. Die Julia-Vorschau steht immer bei
-   * Zoom ~1 und kommt mit dem einfachen Weg aus; das Vorschaubild eines
-   * Lesezeichens von einer tiefen Stelle zerfiele damit in Kloetzchen,
-   * waehrend das grosse Bild daneben scharf ist. */
+   * fuer dieses Bild gerechnet. Das Vorschaubild eines Lesezeichens von einer
+   * tiefen Stelle zerfiele sonst in Kloetzchen, waehrend das grosse Bild
+   * daneben scharf ist.
+   *
+   * `o.doppelt` erzwingt den genauen Weg. Davon lebt der Export: er rechnet
+   * das Bild in Kacheln, und jede Kachel hat ihre eigene Mitte. Mathematisch
+   * ist das dasselbe, in 32 Bit gerundet aber nicht - wo nur noch knapp zwei
+   * Stellen Luft sind, treffen zwei Kacheln am Stoss nicht mehr exakt
+   * dieselbe Farbe. Mit vierzehn Stellen Luft ist der Unterschied kleiner
+   * als jede Farbstufe. Ein Bild, das man sich aufhebt, darf dafuer laenger
+   * rechnen. */
   function inZiel(ziel, o) {
     if (!gl || !ziel || !ziel.taugt || !programme.einfach) return false;
 
     var log2Zoom = Math.log2(z.BASIS_HOEHE / (o.skala * o.hoehe));
-    var knapp = FRAKTAL.Genauigkeit.stellen(log2Zoom, o.hoehe, 'einfach')
-              < FRAKTAL.Genauigkeit.KNAPP;
+    var knapp = o.doppelt
+      || FRAKTAL.Genauigkeit.stellen(log2Zoom, o.hoehe, 'einfach') < FRAKTAL.Genauigkeit.KNAPP;
     bildSetzen((knapp && programme.doppelt) || programme.einfach, o);
     ziel.binden();
     FRAKTAL.Leinwand.zeichnen(ziel.breite, ziel.hoehe);
@@ -210,12 +220,15 @@ FRAKTAL.Zeichner = (function () {
     z.laufzeit.letzteDauer = dauer;
 
     if (dauer > ZU_LANGSAM_MS) {
-      notbremse = Math.max(0.2, notbremse * 0.6);
-    } else if (dauer < SCHNELL_GENUG_MS && notbremse < 1.0) {
-      // Wieder Luft: die Drosselung langsam zuruecknehmen.
-      notbremse = Math.min(1.0, notbremse * 1.2);
+      if (glaetten) glaetten = false;          // Stufe 1: Glaettung weg
+      else notbremse = Math.max(0.2, notbremse * 0.6);   // Stufe 2: Tiefe kuerzen
+    } else if (dauer < SCHNELL_GENUG_MS) {
+      // Wieder Luft: in umgekehrter Reihenfolge zuruecknehmen.
+      if (notbremse < 1.0) notbremse = Math.min(1.0, notbremse * 1.2);
+      else glaetten = true;
     }
     z.laufzeit.notbremse = notbremse;
+    z.laufzeit.glaetten = glaetten;
   }
 
   return {

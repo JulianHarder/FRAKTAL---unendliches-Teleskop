@@ -26,6 +26,24 @@ FRAKTAL.Farbwahl = (function () {
     beiAenderung = rueckruf || function () {};
     knoepfeBauen();
     reglerBauen();
+
+    var zurueck = document.getElementById('knopf-farbe-zurueck');
+    if (zurueck) zurueck.addEventListener('click', zuruecksetzen);
+  }
+
+  /* Alles zurueck auf Anfang - Palette wie Regler.
+   *
+   * Nicht Zierde, sondern Gegengewicht zum Gedaechtnis: wer die Tiefe einmal
+   * auf 0,5 gezogen hat, sieht tief drinnen weniger Struktur und findet nach
+   * einer Woche den Grund nicht mehr. */
+  function zuruecksetzen() {
+    var start = z.reglerStart;
+    z.regler.dichte = start.dichte;
+    z.regler.verschiebung = start.verschiebung;
+    z.regler.qualitaet = start.qualitaet;
+
+    reglerBauen();          // die Schieber zeigen sonst die alten Werte
+    waehlen(start.palette);
   }
 
   function knoepfeBauen() {
@@ -110,5 +128,10 @@ FRAKTAL.Farbwahl = (function () {
     });
   }
 
-  return { starten: starten, waehlen: waehlen, nachNummer: nachNummer };
+  return {
+    starten: starten,
+    waehlen: waehlen,
+    nachNummer: nachNummer,
+    zuruecksetzen: zuruecksetzen
+  };
 })();

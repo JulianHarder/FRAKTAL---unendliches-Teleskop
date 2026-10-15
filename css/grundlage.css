@@ -110,3 +110,29 @@ kbd {
   main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
   .seitenleiste { max-height: 40vh; }
 }
+
+/* --- Schmales Fenster ---
+ * Die Kopfzeile ist der Grund, warum es schiefgehen kann: eine Reihe aus
+ * Marke und drei Knöpfen hat eine Mindestbreite, und die zwingt die ganze
+ * Seite breiter als den Bildschirm – dann steht alles andere halb draußen,
+ * obwohl es für sich genommen passen würde. Also umbrechen lassen. */
+@media (max-width: 560px) {
+  body { grid-template-rows: auto 1fr auto; }
+
+  .kopf {
+    flex-wrap: wrap;
+    gap: var(--abstand-2);
+    padding: var(--abstand-2);
+  }
+
+  .marke { font-size: var(--text-normal); letter-spacing: 1.5px; }
+  .marke span { display: none; }         /* der Untertitel ist hier Luxus */
+  .kopf-werkzeuge { margin-left: auto; }
+
+  /* Die Tastenübersicht füllte fünf Zeilen. Sie steht vollständig in der
+     Hilfe, und auf einem Tastbildschirm gibt es ohnehin keine Tasten. */
+  .fuss { display: none; }
+
+  .seitenleiste { padding: var(--abstand-2); gap: var(--abstand-2); }
+  .block { padding: var(--abstand-2); }
+}

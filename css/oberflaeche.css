@@ -264,9 +264,19 @@ button.lesezeichen-weg:hover {
 
 .knopf-reihe button { flex: 1; }
 
-/* Der Dauerzoom-Knopf in der Kopfzeile, solange er läuft. */
-#knopf-dauerzoom[aria-pressed="true"] {
-  background: var(--farbe-akzent-dunkel);
-  border-color: var(--farbe-akzent);
-  color: var(--farbe-text);
+/* --- Export --- */
+.export-liste {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--abstand-1);
+  margin-bottom: var(--abstand-2);
 }
+
+button.export { padding: 5px 4px; }
+
+#knopf-export-abbrechen {
+  width: 100%;
+  margin-top: var(--abstand-1);
+}
+
+#export-stand:empty { display: none; }

@@ -26,7 +26,11 @@ F.Leinwand = {
 };
 // Die Palette interessiert hier nicht, muss aber antworten.
 F.PalettenTextur = { binden: () => true, aktuell: () => ({ innen: [0, 0, 0] }) };
-const gl = { uniform2f(){}, uniform1f(){}, uniform1i(){}, uniform3f(){} };
+const gesetzt = {};
+const gl = {
+  uniform2f(){}, uniform1f(){}, uniform3f(){},
+  uniform1i(ort, wert) { gesetzt[ort] = wert; },
+};
 const programm = { benutzen(){}, ort: (n) => n };
 // Beide Rechenwege zeigen hier auf dieselbe Attrappe.
 F.Zeichner.starten(gl, { einfach: programm, doppelt: programm });
@@ -77,21 +81,61 @@ const feinIter = z.laufzeit.iterationen;
 pruefe('Feinbild hat volle Kantenlaenge', skalaZuletzt === 1.0);
 pruefe('Grobbild rechnet flacher', grobIter < feinIter, grobIter + ' statt ' + feinIter);
 
-// 5. Notbremse: ein Bild, das ewig dauert, drosselt die Tiefe.
+// 5. Die Notbremse zieht in zwei Stufen - und die Reihenfolge ist der Witz:
+//    zuerst faellt die Kantenglaettung weg (kostet das Vierfache, bringt
+//    weichere Raender), erst danach die Iterationstiefe (das ist der Inhalt).
 z.ansicht.log2Zoom = 30;             // tief, damit die Tiefe nicht am Sockel klebt
-F.Zeichner.eingabe();
-takt(10000, true);
+
+// Schnelle Bilder loesen beide Stufen wieder - sonst messen wir die Reste
+// aus den Spruengen weiter oben.
+let uhr = 7000;
+function schnell(anzahl) {
+  for (let i = 0; i < anzahl; i++) { F.Zeichner.eingabe(); takt(uhr, false); uhr += 40; }
+}
+function langsam() {
+  F.Zeichner.eingabe();
+  takt(uhr + 2000, false);           // das vorige Bild hat 2 s gebraucht
+  uhr += 2000;
+  takt(uhr + 200, false);            // und hier steht das Feinbild mit den Folgen
+  uhr += 200;
+}
+
+schnell(20);
+takt(uhr + 200, false);              // Feinbild im Ruhezustand
+uhr += 200;
+pruefe('Im Ruhezustand wird geglaettet', gesetzt.u_proben === 2 && z.laufzeit.glaetten);
 const vorBremse = z.laufzeit.iterationen;
-takt(12000, true);                   // 2000 ms spaeter = viel zu langsam
-pruefe('Notbremse greift nach einem zu langen Bild', z.laufzeit.notbremse < 1,
+
+langsam();
+pruefe('Erste Stufe: die Kantenglaettung faellt weg',
+  gesetzt.u_proben === 1 && z.laufzeit.glaetten === false);
+pruefe('Die Tiefe bleibt dabei unangetastet',
+  z.laufzeit.notbremse === 1 && z.laufzeit.iterationen === vorBremse,
+  z.laufzeit.iterationen + ' Iterationen');
+
+langsam();
+pruefe('Zweite Stufe: jetzt sinkt die Tiefe', z.laufzeit.notbremse < 1,
   'auf ' + Math.round(z.laufzeit.notbremse * 100) + ' %');
-pruefe('Und die Tiefe sinkt wirklich', z.laufzeit.iterationen < vorBremse,
+pruefe('Und die Iterationen sinken wirklich', z.laufzeit.iterationen < vorBremse,
   z.laufzeit.iterationen + ' statt ' + vorBremse);
 
-// 6. Wird es wieder schnell, kommt die Tiefe zurueck.
-for (let t = 12000; t < 13000; t += 40) takt(t, true);
+// 6. Wird es wieder schnell, kommt erst die Tiefe zurueck, dann die Glaettung.
+let tiefeZurueck = 0;
+let glaettungZurueck = 0;
+for (let i = 0; i < 40; i++) {
+  F.Zeichner.eingabe();
+  takt(uhr, false);
+  uhr += 40;
+  if (!tiefeZurueck && z.laufzeit.notbremse === 1) tiefeZurueck = i;
+  if (!glaettungZurueck && z.laufzeit.glaetten) glaettungZurueck = i;
+}
 pruefe('Nach schnellen Bildern loest die Notbremse wieder',
-  z.laufzeit.notbremse === 1, Math.round(z.laufzeit.notbremse * 100) + ' %');
+  z.laufzeit.notbremse === 1 && z.laufzeit.glaetten === true,
+  Math.round(z.laufzeit.notbremse * 100) + ' % Tiefe, Glaettung '
+  + (z.laufzeit.glaetten ? 'an' : 'aus'));
+pruefe('Und zwar die Tiefe vor der Glaettung', tiefeZurueck > 0
+  && glaettungZurueck > tiefeZurueck, 'Tiefe nach ' + tiefeZurueck
+  + ' Bildern, Glaettung nach ' + glaettungZurueck);
 
 console.log(fehler === 0 ? '\nAlle Pruefungen bestanden.' : '\n' + fehler + ' FEHLER');
 process.exit(fehler === 0 ? 0 : 1);

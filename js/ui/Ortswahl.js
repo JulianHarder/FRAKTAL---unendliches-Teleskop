@@ -44,11 +44,6 @@ FRAKTAL.Ortswahl = (function () {
    * laeuft waehrend des Fluges, dann liest man ihn, statt auf ein wanderndes
    * Bild zu starren. */
   function hinfliegen(ort) {
-    // Die Stellen liegen alle in der Mandelbrot-Menge; aus einer Julia-Menge
-    // heraus muss also erst zurueckgewechselt werden.
-    if (FRAKTAL.Menge.istJulia()) FRAKTAL.Menge.nachMandelbrot();
-
-    FRAKTAL.Dauerzoom.aus();
     FRAKTAL.Kamera.hinfliegen(FRAKTAL.Orte.alsStand(ort));
     FRAKTAL.Meldung.zeigen(ort.titel + ' – ' + ort.satz);
     beiAenderung();

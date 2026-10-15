@@ -60,69 +60,6 @@
   color: var(--farbe-text-leise);
 }
 
-/* --- Julia-Vorschau, unten rechts über der Leinwand --- */
-.vorschau {
-  position: absolute;
-  right: var(--abstand-3);
-  bottom: var(--abstand-3);
-  width: 220px;
-  background: rgba(12, 11, 18, 0.88);
-  border: 1px solid var(--farbe-rand-hell);
-  border-radius: var(--radius);
-  box-shadow: var(--schatten);
-  overflow: hidden;
-}
-
-#vorschau-leinwand {
-  display: block;
-  width: 220px;
-  height: 220px;
-  cursor: pointer;
-}
-
-.vorschau-marke {
-  margin: 0;
-  padding: 4px var(--abstand-2) 5px;
-  border-top: 1px solid var(--farbe-rand);
-  font: 11px / 1.3 var(--schrift-fest);
-  color: var(--farbe-text-leise);
-  text-align: center;
-}
-
-/* Das Schild, solange die Julia-Menge selbst die Hauptbühne hat. */
-.julia-schild {
-  position: absolute;
-  right: var(--abstand-3);
-  bottom: var(--abstand-3);
-  display: flex;
-  align-items: center;
-  gap: var(--abstand-3);
-  padding: var(--abstand-2) var(--abstand-3);
-  background: rgba(12, 11, 18, 0.88);
-  border: 1px solid var(--farbe-rand-hell);
-  border-radius: var(--radius);
-  box-shadow: var(--schatten);
-  font-size: var(--text-klein);
-}
-
-.julia-schild b {
-  font-size: 11px;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--farbe-akzent);
-}
-
-.julia-schild span {
-  font: var(--text-klein) / 1.3 var(--schrift-fest);
-  color: var(--farbe-text-leise);
-}
-
-/* Schmales Fenster: die Vorschau würde die halbe Leinwand verdecken. */
-@media (max-width: 560px) {
-  .vorschau, #vorschau-leinwand { width: 132px; }
-  #vorschau-leinwand { height: 132px; }
-}
-
 /* --- Kurze Meldung über der Leinwand --- */
 .meldung {
   position: absolute;
@@ -152,4 +89,110 @@
   word-break: break-all;
   user-select: text;
   pointer-events: auto;
+}
+
+/* --- Hilfefenster --- */
+.hilfe {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: var(--abstand-4);
+  background: rgba(6, 5, 10, 0.72);
+}
+
+.hilfe-fenster {
+  position: relative;
+  width: min(72ch, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--abstand-5);
+  background: var(--farbe-flaeche);
+  border: 1px solid var(--farbe-rand-hell);
+  border-radius: var(--radius);
+  box-shadow: var(--schatten);
+}
+
+.hilfe-zu {
+  position: absolute;
+  top: var(--abstand-3);
+  right: var(--abstand-3);
+  width: 28px;
+  padding: 0;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.hilfe-fenster h2 {
+  margin: 0 0 var(--abstand-3);
+  font-size: var(--text-gross);
+  letter-spacing: 0.5px;
+}
+
+.hilfe-fenster h3 {
+  margin: var(--abstand-5) 0 var(--abstand-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--farbe-text-still);
+  border-bottom: 1px solid var(--farbe-rand);
+  padding-bottom: var(--abstand-2);
+}
+
+.hilfe-fenster p {
+  margin: 0 0 var(--abstand-3);
+  color: var(--farbe-text-leise);
+  max-width: 64ch;
+}
+
+/* Taste links, Wirkung rechts. */
+.hilfe-fenster dl {
+  display: grid;
+  grid-template-columns: minmax(96px, max-content) 1fr;
+  gap: 5px var(--abstand-4);
+  margin: 0;
+  font-size: var(--text-klein);
+}
+
+.hilfe-fenster dt { display: flex; gap: 3px; flex-wrap: wrap; }
+.hilfe-fenster dd { margin: 0; color: var(--farbe-text-leise); }
+
+.hilfe-schluss {
+  margin: var(--abstand-5) 0 0 !important;
+  padding-top: var(--abstand-3);
+  border-top: 1px solid var(--farbe-rand);
+  font-size: 11px;
+  color: var(--farbe-text-still);
+}
+
+/* --- Die Genauigkeitsgrenze, über der Leinwand --- */
+.grenze {
+  position: absolute;
+  left: 50%;
+  bottom: var(--abstand-4);
+  transform: translateX(-50%);
+  display: grid;
+  gap: 3px;
+  max-width: min(58ch, calc(100% - 2 * var(--abstand-4)));
+  padding: var(--abstand-3) var(--abstand-4);
+  background: rgba(12, 11, 18, 0.92);
+  border: 1px solid var(--farbe-warnung);
+  border-radius: var(--radius);
+  box-shadow: var(--schatten);
+  pointer-events: none;
+}
+
+.grenze b {
+  font-size: var(--text-klein);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--farbe-warnung);
+}
+
+.grenze span {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--farbe-text-leise);
 }

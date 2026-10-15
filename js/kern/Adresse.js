@@ -25,11 +25,6 @@ FRAKTAL.Adresse = (function () {
       'palette=' + z.regler.palette
     ];
 
-    // Das feste c sagt zugleich, dass eine Julia-Menge gemeint ist.
-    if (z.menge === 'julia') {
-      teile.push('c=' + String(z.julia.re) + ',' + String(z.julia.im));
-    }
-
     return ohneHash(location.href) + '#' + teile.join('&');
   }
 
@@ -45,18 +40,6 @@ FRAKTAL.Adresse = (function () {
     var im = zahl(werte.im);
     var zoom = zahl(werte.zoom);
     if (re === null || im === null || zoom === null || zoom <= 0) return false;
-
-    // Eine Julia-Menge erkennt man am mitgegebenen c.
-    var c = (werte.c || '').split(',');
-    var cRe = zahl(c[0]);
-    var cIm = zahl(c[1]);
-    if (cRe !== null && cIm !== null) {
-      z.menge = 'julia';
-      z.julia.re = cRe;
-      z.julia.im = cIm;
-    } else {
-      z.menge = 'mandelbrot';
-    }
 
     setzen(re, im, Math.log2(zoom));
 
