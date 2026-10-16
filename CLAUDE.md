@@ -12,8 +12,8 @@ Oberfläche ehrlich an – sie wird nicht versteckt.
 
 ## Stand (Oktober 2026)
 
-**Fertig und geprüft: Etappen 1 bis 7**, davon zwei Stücke auf Julians Wunsch
-wieder entfernt (siehe unten). Als Nächstes steht Etappe 8 an.
+**Fertig und geprüft: alle acht Etappen**, davon zwei Stücke auf Julians Wunsch
+wieder entfernt (siehe unten).
 
 1. **Gerüst** – WebGL2-Kontext, Vollbild-Dreieck ohne Puffer, Menge in Graustufen.
 2. **Navigation** – Zoom zum Mauszeiger (im Zweierlogarithmus), Ziehen, Kneifen,
@@ -33,8 +33,11 @@ wieder entfernt (siehe unten). Als Nächstes steht Etappe 8 an.
 7. **Export und Feinschliff** – PNG bis 4K, gekachelt gerechnet mit
    Fortschrittsbalken; Hilfefenster (`H`) mit allen Tasten; Layout für
    schmale Fenster; Notbremse in zwei Stufen; `README.md`.
+8. **Portfolio** – Kopie unter `PortfolioWebseiteCloudflare/projekte/fraktal/`
+   (nur `index.html`, `css/`, `js/` – ohne `pruefungen/`, `screenshots/` und die
+   Plandateien), Eintrag in `assets/daten/projekte-entdecken.js`, Vorschaubild
+   `assets/bilder/vorschau/fraktal.webp`.
 
-Offen: **8** Kopie ins Portfolio.
 Die vollständige Beschreibung aller acht Etappen steht in `FRAKTAL-Plan.md`.
 
 ### Wo von diesem Plan abgewichen wurde
