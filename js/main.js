@@ -199,6 +199,18 @@ FRAKTAL.Haupt = (function () {
     if (FRAKTAL.Export.laeuft()) FRAKTAL.Export.abbrechen();
   }
 
+  /* Der ehrliche Hinweis statt einer schwarzen Flaeche.
+   *
+   * Zwei Wege fuehren hierher: gar kein WebGL2-Kontext, oder ein Shader, den
+   * der Treiber nicht uebersetzt. Beides ist nichts, was der Benutzer falsch
+   * gemacht hat - also steht es da, und die leere Leinwand geht weg. */
+  function keinWebglZeigen(text) {
+    var hinweis = document.getElementById('kein-webgl');
+    if (text) document.getElementById('kein-webgl-text').textContent = text;
+    hinweis.hidden = false;
+    leinwand.style.display = 'none';
+  }
+
   // --- Die Schleife ---
 
   function schleife(jetzt) {
